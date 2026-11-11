@@ -63,6 +63,10 @@ body {
 #rack i.down { background: transparent; box-shadow: inset 0 0 0 1px rgba(220, 225, 255, 0.3); }
 
 #bottom { display: flex; flex-direction: column; align-items: center; gap: 10px; }
+#stance { font-size: 13px; font-weight: 500; color: var(--ink); background: var(--panel); border: 1px solid var(--line); border-radius: 999px;
+  padding: 4px 12px; font-variant-numeric: tabular-nums; backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); }
+#stance b { color: var(--cyan); font-weight: 900; }
+#stance small { color: var(--muted); font-size: 11px; }
 #info { min-height: 20px; font-size: 14px; color: var(--cyan); font-weight: 700; text-shadow: 0 1px 8px rgba(0, 0, 0, 0.9); font-variant-numeric: tabular-nums; transition: opacity 0.4s; }
 #controls { display: flex; align-items: center; gap: 12px; width: min(560px, 100%); }
 #hint { flex: 1; text-align: center; font-size: 12.5px; line-height: 1.5; color: #c9cde0; text-wrap: balance; transition: color 0.2s;
@@ -122,6 +126,25 @@ body {
 .over-title { margin: 0; font-size: 18px; letter-spacing: 0.3em; color: var(--muted); font-weight: 700; }
 #loading { font-size: 13px; color: var(--muted); }
 
+.brandwrap { display: flex; align-items: center; gap: 10px; }
+#pausebtn { width: 40px; height: 40px; }
+#pausebtn svg { width: 16px; height: 16px; }
+.pause-title { margin: 0; font-family: var(--f-display); font-weight: 400; font-size: clamp(44px, 13vw, 72px); line-height: 1; color: var(--cyan);
+  text-shadow: 0 0 16px rgba(99, 221, 255, 0.7), 0 0 44px rgba(99, 221, 255, 0.35); }
+.pause-sub { margin: -6px 0 0; color: var(--muted); font-size: 14px; font-variant-numeric: tabular-nums; }
+.menu { display: flex; flex-direction: column; gap: 10px; width: min(320px, 100%); align-self: center; }
+.menu .cta { align-self: stretch; }
+.ghost { pointer-events: auto; font: 700 15px var(--f-body); letter-spacing: 0.06em; color: var(--ink); background: var(--panel);
+  border: 1px solid var(--line); border-radius: 999px; padding: 12px 20px; cursor: pointer; transition: border-color 0.15s, color 0.15s; }
+.ghost:hover { border-color: rgba(220, 225, 255, 0.4); }
+.ghost.warn { color: var(--neon); border-color: var(--neon); }
+.ghost:focus-visible { outline: 2px solid var(--amber); outline-offset: 3px; }
+.rules summary { cursor: pointer; color: var(--muted); font-size: 14px; padding: 6px; }
+.rules summary:focus-visible { outline: 2px solid var(--amber); border-radius: 6px; }
+.rules .how { margin: 8px 0 0; }
+.keyhint { margin: 0; font-size: 12px; color: var(--muted); }
+body.paused #msg { animation-play-state: paused; }
+
 @media (max-width: 520px) {
   .fr .mk { height: 18px; }
   .fr .mk span { font-size: 11px; }
@@ -143,13 +166,17 @@ body {
   <div id="top">
     <div id="board" aria-label="計分表"></div>
     <div id="meta">
-      <div id="brand">LANE 7</div>
+      <div class="brandwrap">
+        <button class="btn" id="pausebtn" aria-label="暫停遊戲"><svg viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="4" width="4" height="16" rx="1"/><rect x="14" y="4" width="4" height="16" rx="1"/></svg></button>
+        <div id="brand">LANE 7</div>
+      </div>
       <div id="status">第 1 格 · 第 1 球</div>
       <div id="rack" aria-label="剩餘球瓶"></div>
     </div>
   </div>
   <div id="bottom">
     <div id="info"></div>
+    <div id="stance" aria-live="polite">站位 <b>第 20 板</b> <small>(由右數)</small> · 正中央</div>
     <div id="controls">
       <button class="btn" id="left" aria-label="往左移動站位"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg></button>
       <div id="hint"><b>按住畫面往上滑</b>把球丟出去，滑得越快球越快<br>滑出弧線會打出曲球 · ← → 調整站位</div>
@@ -170,6 +197,7 @@ body {
       <dt>瞄準</dt><dd>往左或右斜著滑，球道上會出現瞄準線。</dd>
       <dt>曲球</dt><dd>滑出一道弧線，球會在球道後段轉彎。</dd>
       <dt>站位</dt><dd>用 ← → 鍵或兩側按鈕在犯規線後左右移動。</dd>
+      <dt>暫停</dt><dd>按左上角的暫停鈕，或按 Esc／P。</dd>
     </dl>
     <button class="cta" id="go">開始打球</button>
     <div id="loading">標準十格計分 · 60 呎球道</div>
@@ -186,6 +214,29 @@ body {
       <div><b id="st-best">0</b>最佳分數</div>
     </div>
     <button class="cta" id="again">再打一局</button>
+  </div>
+</div>
+
+<div class="overlay" id="pause" hidden role="dialog" aria-modal="true" aria-labelledby="pause-title">
+  <div class="card">
+    <h2 class="pause-title" id="pause-title">PAUSED</h2>
+    <p class="pause-sub" id="pause-sub">第 1 格 · 第 1 球 · 目前 0 分</p>
+    <div class="menu">
+      <button class="cta" id="resume">繼續打球</button>
+      <button class="ghost" id="restart">重新開始</button>
+      <button class="ghost" id="sound">音效：開</button>
+      <button class="ghost" id="quit">結束遊戲</button>
+      <details class="rules">
+        <summary>玩法說明</summary>
+        <dl class="how">
+          <dt>丟球</dt><dd>按住畫面往上滑，放開就出手。滑得越快，球速越快。</dd>
+          <dt>瞄準</dt><dd>往左或右斜著滑，球道上會出現瞄準線。</dd>
+          <dt>曲球</dt><dd>滑出一道弧線，球會在球道後段轉彎。</dd>
+          <dt>站位</dt><dd>用 ← → 鍵或兩側按鈕在犯規線後左右移動。</dd>
+        </dl>
+      </details>
+    </div>
+    <p class="keyhint">按 Esc 或 P 也能暫停／繼續</p>
   </div>
 </div>
 
@@ -420,9 +471,28 @@ blob.rotation.x = -Math.PI / 2; blob.visible = false; scene.add(blob);
 // Aim guide
 const guideAlpha = (() => { const c = document.createElement('canvas'); c.width = 4; c.height = 256; const g = c.getContext('2d');
   const grd = g.createLinearGradient(0, 0, 0, 256); grd.addColorStop(0, '#000'); grd.addColorStop(1, '#fff'); g.fillStyle = grd; g.fillRect(0, 0, 4, 256); return new THREE.CanvasTexture(c); })();
-const guideGeo = new THREE.PlaneGeometry(0.035, 13); guideGeo.rotateX(-Math.PI / 2); guideGeo.translate(0, 0.004, -6.5);
+const guideGeo = new THREE.PlaneGeometry(0.035, 13); guideGeo.rotateX(-Math.PI / 2); guideGeo.translate(0, 0.009, -6.5);
 const guide = new THREE.Mesh(guideGeo, new THREE.MeshBasicMaterial({ color: 0xff4f7b, transparent: true, opacity: 0.75, alphaMap: guideAlpha, depthWrite: false }));
 guide.visible = false; scene.add(guide);
+
+// Stance marker: which board the bowler stands on (boards counted from the right, 1–39)
+const BW = W / 39;
+const boardOf = (x) => clamp(Math.round((W / 2 - x) / BW + 0.5), 1, 39);
+const boardX = (b) => W / 2 - (b - 0.5) * BW;
+const stanceMarker = new THREE.Group();
+{
+  // solid until just past the arrows, then fades out
+  const fade = (() => { const c = document.createElement('canvas'); c.width = 4; c.height = 256; const g = c.getContext('2d');
+    const grd = g.createLinearGradient(0, 0, 0, 256); grd.addColorStop(0, '#000'); grd.addColorStop(0.12, '#fff'); grd.addColorStop(1, '#fff');
+    g.fillStyle = grd; g.fillRect(0, 0, 4, 256); return new THREE.CanvasTexture(c); })();
+  const footGeo = new THREE.PlaneGeometry(BW * 0.9, 1.5); footGeo.rotateX(-Math.PI / 2); footGeo.translate(0, 0.0025, 0.9);
+  stanceMarker.add(new THREE.Mesh(footGeo, new THREE.MeshBasicMaterial({ color: 0x63ddff, transparent: true, opacity: 0.55, depthWrite: false })));
+  const lineGeo = new THREE.PlaneGeometry(BW, 5.2); lineGeo.rotateX(-Math.PI / 2); lineGeo.translate(0, 0.008, -2.65);
+  stanceMarker.add(new THREE.Mesh(lineGeo, new THREE.MeshBasicMaterial({ color: 0x63ddff, transparent: true, opacity: 0.8, alphaMap: fade, depthWrite: false, toneMapped: false })));
+  const tickGeo = new THREE.PlaneGeometry(BW * 5, 0.035); tickGeo.rotateX(-Math.PI / 2); tickGeo.translate(0, 0.003, -0.06);
+  stanceMarker.add(new THREE.Mesh(tickGeo, new THREE.MeshBasicMaterial({ color: 0x63ddff, transparent: true, opacity: 0.95, depthWrite: false })));
+}
+scene.add(stanceMarker);
 
 // ---------------- Physics ----------------
 const world = new CANNON.World({ gravity: new CANNON.Vec3(0, -9.82, 0) });
@@ -544,10 +614,12 @@ function jingle(notes) {
     o.connect(g).connect(master); o.start(t); o.stop(t + 0.24);
   });
 }
-$('#mute').addEventListener('click', () => {
-  muted = !muted; if (master) master.gain.value = muted ? 0 : 0.8;
+function setMuted(m) {
+  muted = m; if (master) master.gain.value = muted ? 0 : 0.8;
   $('#wave').style.display = muted ? 'none' : ''; $('#cross').style.display = muted ? '' : 'none';
-});
+  $('#sound').textContent = `音效：${muted ? '關' : '開'}`;
+}
+$('#mute').addEventListener('click', () => setMuted(!muted));
 
 // ---------------- Scoring ----------------
 let frames, frame, ballNo, stats, standingBefore = 10;
@@ -621,6 +693,8 @@ function showInfo(text) {
 function flashHint() { const h = $('#hint'); h.classList.add('flash'); setTimeout(() => h.classList.remove('flash'), 900); }
 
 // ---------------- Game flow ----------------
+let pxRaw = 0, holdT = 0, shownBoard = 0, stepQueue = 0;
+const keyDir = (k) => (k === 'ArrowLeft' || k === 'a' || k === 'A' ? -1 : k === 'ArrowRight' || k === 'd' || k === 'D' ? 1 : 0);
 let state = 'intro', px = 0, shot = null, tState = 0, settleT = null, resultT = 0, gutterFlag = false, pending = null;
 const relFrom = new THREE.Vector3(), relTo = new THREE.Vector3();
 let best = 0; try { best = +localStorage.getItem('lane7-best') || 0; } catch (e) {}
@@ -628,7 +702,7 @@ let best = 0; try { best = +localStorage.getItem('lane7-best') || 0; } catch (e)
 function newGame() {
   frames = Array.from({ length: 10 }, () => []); frame = 0; ballNo = 0; stats = { strike: 0, spare: 0 };
   if (ballInWorld) { world.removeBody(ballBody); ballInWorld = false; }
-  rackPins(); state = 'aim'; px = 0; renderBoard();
+  rackPins(); state = 'aim'; px = pxRaw = 0; renderBoard();
 }
 
 function analyze(pts) {
@@ -650,7 +724,7 @@ function analyze(pts) {
 
 let drag = null;
 canvas.addEventListener('pointerdown', (e) => {
-  if (state !== 'aim') return;
+  if (state !== 'aim' || paused) return;
   initAudio();
   try { canvas.setPointerCapture(e.pointerId); } catch (err) {}
   drag = { pts: [{ x: e.clientX, y: e.clientY, t: performance.now() }] };
@@ -677,11 +751,16 @@ canvas.addEventListener('pointercancel', (e) => endDrag(e, true));
 canvas.addEventListener('contextmenu', (e) => e.preventDefault());
 
 let moveDir = 0; const keys = {};
-addEventListener('keydown', (e) => { keys[e.key] = true; });
+addEventListener('keydown', (e) => {
+  if (e.key === 'Escape' || e.key === 'p' || e.key === 'P') { if (!e.repeat) setPaused(!paused); return; }
+  if (paused) return;
+  keys[e.key] = true;
+  if (!e.repeat && state === 'aim') stepQueue += keyDir(e.key);
+});
 addEventListener('keyup', (e) => { keys[e.key] = false; });
 for (const [id, d] of [['#left', -1], ['#right', 1]]) {
   const b = $(id);
-  b.addEventListener('pointerdown', (e) => { moveDir = d; initAudio(); try { b.setPointerCapture(e.pointerId); } catch (err) {} });
+  b.addEventListener('pointerdown', (e) => { moveDir = d; if (state === 'aim' && !paused) stepQueue += d; initAudio(); try { b.setPointerCapture(e.pointerId); } catch (err) {} });
   ['pointerup', 'pointercancel', 'lostpointercapture'].forEach((ev) => b.addEventListener(ev, () => { moveDir = 0; }));
 }
 
@@ -745,6 +824,60 @@ function afterResult() {
 $('#go').addEventListener('click', () => { initAudio(); $('#start').hidden = true; newGame(); });
 $('#again').addEventListener('click', () => { $('#over').hidden = true; newGame(); });
 
+// ---------------- Pause menu ----------------
+let paused = false, armed = null, armTimer = null;
+const canPause = () => state !== 'intro' && state !== 'over';
+// buttons that need a second press to confirm
+const confirmLabels = { restart: '重新開始', quit: '結束遊戲' };
+function disarm() {
+  clearTimeout(armTimer); armTimer = null; armed = null;
+  for (const id in confirmLabels) { const b = $('#' + id); b.textContent = confirmLabels[id]; b.classList.remove('warn'); }
+}
+function confirmButton(id, prompt, action) {
+  $('#' + id).addEventListener('click', () => {
+    if (armed !== id) {
+      disarm(); armed = id;
+      const b = $('#' + id); b.textContent = prompt; b.classList.add('warn');
+      armTimer = setTimeout(disarm, 3000);
+      return;
+    }
+    disarm(); action();
+  });
+}
+function setPaused(p) {
+  if (p === paused || (p && !canPause())) return;
+  paused = p;
+  document.body.classList.toggle('paused', p);
+  $('#pause').hidden = !p;
+  if (p) {
+    drag = null; guide.visible = false; moveDir = 0;
+    for (const k in keys) keys[k] = false;
+    disarm();
+    $('#pause-sub').textContent = `第 ${frame + 1} 格 · 第 ${ballNo + 1} 球 · 目前 ${totals().run} 分`;
+    if (ac) ac.suspend();
+    $('#resume').focus();
+  } else if (ac) ac.resume();
+}
+$('#pausebtn').addEventListener('click', () => setPaused(true));
+$('#resume').addEventListener('click', () => setPaused(false));
+$('#sound').addEventListener('click', () => setMuted(!muted));
+confirmButton('restart', '再按一次確定重新開始', () => {
+  msgEl.className = ''; $('#info').style.opacity = 0;
+  setPaused(false);
+  newGame();
+});
+confirmButton('quit', '再按一次回到首頁（這局不計分）', () => {
+  msgEl.className = ''; $('#info').style.opacity = 0;
+  setPaused(false);
+  if (ballInWorld) { world.removeBody(ballBody); ballInWorld = false; }
+  blob.visible = false; guide.visible = false;
+  frames = Array.from({ length: 10 }, () => []); frame = 0; ballNo = 0; stats = { strike: 0, spare: 0 };
+  state = 'intro'; px = pxRaw = 0;
+  rackPins(); renderBoard();
+  $('#start').hidden = false; $('#go').focus();
+});
+document.addEventListener('visibilitychange', () => { if (document.hidden) setPaused(true); });
+
 // ---------------- Loop ----------------
 const camPos = new THREE.Vector3(0, 1.42, 1.7), camLook = new THREE.Vector3(0, 0.15, -18.6);
 const wantPos = new THREE.Vector3(), wantLook = new THREE.Vector3(), held = new THREE.Vector3();
@@ -758,7 +891,26 @@ function update(dt) {
   elapsed += dt;
   if (state === 'aim') {
     const d = moveDir || ((keys.ArrowLeft || keys.a || keys.A) ? -1 : 0) + ((keys.ArrowRight || keys.d || keys.D) ? 1 : 0);
-    px = clamp(px + d * 0.9 * dt, -MAXX, MAXX);
+    // a tap moves exactly one board; holding slides after a short delay
+    if (stepQueue) { pxRaw = boardX(boardOf(px) - stepQueue); stepQueue = 0; }
+    if (d !== 0) {
+      if (holdT > 0.28) pxRaw += d * 0.32 * dt;
+      holdT += dt;
+    } else holdT = 0;
+    pxRaw = clamp(pxRaw, -MAXX, MAXX);
+    px = boardX(boardOf(pxRaw));
+  }
+  stanceMarker.visible = state === 'aim' || state === 'intro';
+  stanceMarker.position.x = px;
+  const stanceEl = $('#stance');
+  stanceEl.style.visibility = state === 'aim' ? 'visible' : 'hidden';
+  const bd = boardOf(px);
+  if (bd !== shownBoard) {
+    shownBoard = bd;
+    const notes = [];
+    if (bd === 20) notes.push('正中央');
+    if (bd % 5 === 0 && bd >= 5 && bd <= 35) notes.push(`對齊第 ${bd / 5} 支箭頭`);
+    stanceEl.innerHTML = `站位 <b>第 ${bd} 板</b> <small>(由右數)</small>${notes.length ? ' · ' + notes.join(' · ') : ''}`;
   }
   world.step(1 / 240, dt, 16);
 
@@ -821,7 +973,8 @@ function update(dt) {
 }
 function loop() {
   requestAnimationFrame(loop);
-  update(Math.min(clock.getDelta(), 0.05));
+  const dt = Math.min(clock.getDelta(), 0.05);
+  if (!paused) update(dt);
   renderer.render(scene, camera);
 }
 loop();
