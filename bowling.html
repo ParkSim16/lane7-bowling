@@ -309,6 +309,7 @@ body.paused #flash, body.paused #msg .big { animation-play-state: paused; }
           <dt>瞄準</dt><dd>往左或右斜著滑，球道上會出現瞄準線。</dd>
           <dt>曲球</dt><dd>滑出一道弧線，球會在球道後段轉彎。</dd>
           <dt>站位</dt><dd>用 ← → 鍵或兩側按鈕在犯規線後左右移動。</dd>
+          <dt>慢動作</dt><dd>會全倒或補中的那一球，快撞到瓶子時會放慢，撞上去的瞬間恢復全速。</dd>
         </dl>
       </details>
     </div>
@@ -345,7 +346,7 @@ const ROW = SP * Math.sin(Math.PI / 3);
 const MAXX = W / 2 - R - 0.02;
 
 // Game version: bump together with CHANGELOG.md and the git tag on every push
-const GAME_VERSION = '1.3.0';
+const GAME_VERSION = '1.4.0';
 document.querySelectorAll('.ver').forEach((el) => { el.textContent = `v${GAME_VERSION}`; });
 
 try { await Promise.race([document.fonts.load('100px Monoton'), new Promise((r) => setTimeout(r, 1500))]); } catch (e) {}
@@ -778,23 +779,32 @@ function celebrate(kind, n = 1) {
 }
 
 // ---------------- Physics ----------------
-const world = new CANNON.World({ gravity: new CANNON.Vec3(0, -9.82, 0) });
-world.allowSleep = true;
-world.solver.iterations = 20;
-world.defaultContactMaterial.friction = 0.2;
-world.defaultContactMaterial.restitution = 0.25;
-world.defaultContactMaterial.contactEquationStiffness = 1e8;
-world.defaultContactMaterial.contactEquationRelaxation = 3;
+// Every body is built by a factory stored on it as body.make, so the whole world can be copied for the
+// look-ahead prediction (see predictShot): same settings, same bodies in the same order → the same result.
 const mLane = new CANNON.Material('lane'), mBall = new CANNON.Material('ball'), mPin = new CANNON.Material('pin');
-const cm = (a, b, friction, restitution) => world.addContactMaterial(new CANNON.ContactMaterial(a, b, { friction, restitution, contactEquationStiffness: 1e8, contactEquationRelaxation: 3 }));
-cm(mBall, mLane, 0.04, 0.05);
-cm(mPin, mLane, 0.2, 0.15);
-cm(mBall, mPin, 0.15, 0.62);
-cm(mPin, mPin, 0.15, 0.58);
+function makeWorld() {
+  const w = new CANNON.World({ gravity: new CANNON.Vec3(0, -9.82, 0) });
+  w.allowSleep = true;
+  w.solver.iterations = 20;
+  w.defaultContactMaterial.friction = 0.2;
+  w.defaultContactMaterial.restitution = 0.25;
+  w.defaultContactMaterial.contactEquationStiffness = 1e8;
+  w.defaultContactMaterial.contactEquationRelaxation = 3;
+  const cm = (a, b, friction, restitution) => w.addContactMaterial(new CANNON.ContactMaterial(a, b, { friction, restitution, contactEquationStiffness: 1e8, contactEquationRelaxation: 3 }));
+  cm(mBall, mLane, 0.04, 0.05);
+  cm(mPin, mLane, 0.2, 0.15);
+  cm(mBall, mPin, 0.15, 0.62);
+  cm(mPin, mPin, 0.15, 0.58);
+  return w;
+}
+const world = makeWorld();
 
 function staticBox(hx, hy, hz, x, y, z, mat) {
-  const b = new CANNON.Body({ mass: 0, material: mat, shape: new CANNON.Box(new CANNON.Vec3(hx, hy, hz)) });
-  b.position.set(x, y, z); world.addBody(b); return b;
+  const make = () => {
+    const b = new CANNON.Body({ mass: 0, material: mat, shape: new CANNON.Box(new CANNON.Vec3(hx, hy, hz)) });
+    b.position.set(x, y, z); b.make = make; return b;
+  };
+  const b = make(); world.addBody(b); return b;
 }
 const gutterBodies = new Set(), pitBodies = new Set();
 staticBox(W / 2, 0.1, 11.2, 0, -0.1, LANE_END + 11.2, mLane);
@@ -805,8 +815,11 @@ for (const s of [-1, 1]) {
 pitBodies.add(staticBox(0.95, 0.1, 0.65, 0, -0.45, LANE_END - 0.6, mLane));
 pitBodies.add(staticBox(0.95, 1, 0.1, 0, 0.5, -20.5));
 
-const ballBody = new CANNON.Body({ mass: 6.5, material: mBall, shape: new CANNON.Sphere(R), linearDamping: 0.015, angularDamping: 0.05 });
-ballBody.allowSleep = false;
+function makeBall() {
+  const b = new CANNON.Body({ mass: 6.5, material: mBall, shape: new CANNON.Sphere(R), linearDamping: 0.015, angularDamping: 0.05 });
+  b.allowSleep = false; b.make = makeBall; return b;
+}
+const ballBody = makeBall();
 let ballInWorld = false;
 // per-shot sound/effect flags (reset in launch)
 let shotHit = false, hitT = null, gutterSnd = false, simClock = 0;
@@ -816,11 +829,15 @@ ballBody.addEventListener('collide', (e) => {
   else if (pitBodies.has(e.body) && v > 0.4) pitThud(v);
 });
 
-const pins = pinSpots.map((s) => {
+function makePin() {
   const body = new CANNON.Body({ mass: 1.5, material: mPin, linearDamping: 0.02, angularDamping: 0.06 });
   body.sleepSpeedLimit = 0.08; body.sleepTimeLimit = 0.4;
   body.addShape(new CANNON.Cylinder(0.056, 0.034, 0.2, 10), new CANNON.Vec3(0, 0.1 - COM, 0));
   body.addShape(new CANNON.Cylinder(0.03, 0.052, 0.18, 10), new CANNON.Vec3(0, 0.29 - COM, 0));
+  body.make = makePin; return body;
+}
+const pins = pinSpots.map((s) => {
+  const body = makePin();
   const mesh = new THREE.Mesh(PIN_GEO_DYN, PIN_MAT); mesh.castShadow = true; scene.add(mesh);
   const pin = { s, body, mesh, inWorld: false, fell: false };
   body.addEventListener('collide', (e) => {
@@ -842,18 +859,21 @@ const pins = pinSpots.map((s) => {
   return pin;
 });
 const UP = new CANNON.Vec3(0, 1, 0), tmpV = new CANNON.Vec3();
-function isDown(p) {
-  if (!p.inWorld) return true;
-  p.body.quaternion.vmult(UP, tmpV);
-  const b = p.body.position;
+function bodyDown(body) {
+  body.quaternion.vmult(UP, tmpV);
+  const b = body.position;
   return tmpV.y < 0.82 || b.y < COM - 0.06 || Math.abs(b.x) > W / 2 + 0.02 || b.z < LANE_END;
 }
+const isDown = (p) => !p.inWorld || bodyDown(p.body);
+// stopped moving (or fell out of the alley, where it just keeps falling)
+const bodyQuiet = (b) => b.position.y < -1 || b.sleepState === CANNON.Body.SLEEPING || (b.velocity.length() < 0.06 && b.angularVelocity.length() < 0.5);
 const standingCount = () => pins.filter((p) => !isDown(p)).length;
 
 function rackPins() {
   pins.forEach((p) => {
     if (!p.inWorld) { world.addBody(p.body); p.inWorld = true; }
     p.body.position.set(p.s.x, COM, p.s.z); p.body.quaternion.set(0, 0, 0, 1);
+    p.body.updateInertiaWorld(true); // else it keeps the last tilt's inertia (and the look-ahead copy would differ)
     p.body.velocity.set(0, 0, 0); p.body.angularVelocity.set(0, 0, 0);
     p.body.sleep(); p.mesh.visible = true; p.fell = false;
   });
@@ -869,18 +889,57 @@ function sweepPins() {
 }
 
 // hook: the back end of the lane is dry, so side spin bites there
-world.addEventListener('preStep', () => {
-  if (!ballInWorld || !shot) return;
-  const p = ballBody.position;
+function hookForce(ball) {
+  const p = ball.position;
   if (Math.abs(p.x) < W / 2 && p.y > 0.05 && p.z < -5 && p.z > HEAD_Z + 0.2) {
     const bite = clamp((-p.z - 5) / 6, 0, 1);
-    ballBody.applyForce(new CANNON.Vec3(shot.spin * 5.2 * bite, 0, 0));
+    ball.applyForce(new CANNON.Vec3(shot.spin * 5.2 * bite, 0, 0));
   }
-});
+}
+world.addEventListener('preStep', () => { if (ballInWorld && shot) hookForce(ballBody); });
+
+// ---- look-ahead: will this ball knock down every standing pin? ----
+// Right after release, copy the world and run the copy ahead in the background (a few dozen physics steps
+// per frame) until the pins settle. The physics is deterministic, so the copy ends the way the real shot will,
+// well before the ball reaches the pins. The copy has no event listeners, so it makes no sounds or effects.
+const PRED_STEP = 1 / 240, PRED_BUDGET_MS = 5; // physics step (shared with the real world) / time per frame for the look-ahead
+let pred = null; // { w, ball, pinBodies, t, settleT, done, clear }
+function predictShot() {
+  const w = makeWorld(), copies = new Map();
+  w.time = world.time;
+  for (const b of world.bodies) {
+    const c = b.make();
+    c.position.copy(b.position); c.quaternion.copy(b.quaternion);
+    c.velocity.copy(b.velocity); c.angularVelocity.copy(b.angularVelocity);
+    c.sleepState = b.sleepState; c.timeLastSleepy = b.timeLastSleepy; c.wakeUpAfterNarrowphase = b.wakeUpAfterNarrowphase;
+    c.invInertiaWorld.elements = b.invInertiaWorld.elements.slice(); // exact copy (recomputing rounds differently)
+    w.addBody(c); copies.set(b, c);
+  }
+  const ball = copies.get(ballBody);
+  w.addEventListener('preStep', () => hookForce(ball));
+  pred = { w, ball, pinBodies: pins.filter((p) => p.inWorld).map((p) => copies.get(p.body)), t: 0, settleT: null, done: false, clear: false };
+}
+// Runs for up to PRED_BUDGET_MS each frame. Stops as soon as every standing pin is down (that is all slow
+// motion needs to know); otherwise uses the same end-of-shot rule as the real game (settle, pins stop).
+function runPrediction() {
+  const P = pred, t0 = performance.now();
+  while (!P.done && performance.now() - t0 < PRED_BUDGET_MS) {
+    P.w.step(PRED_STEP); P.t += PRED_STEP;
+    P.downT = P.pinBodies.every(bodyDown) ? (P.downT || 0) + PRED_STEP : 0; // all down, and staying down (not just wobbling)
+    if (P.downT > 0.3) { P.done = true; P.clear = true; break; }
+    const b = P.ball.position;
+    if (P.settleT === null && (b.z < LANE_END - 0.05 || b.y < -0.5 || P.t > 9 || (P.t > 1 && P.ball.velocity.length() < 0.15))) P.settleT = 0;
+    if (P.settleT !== null) {
+      P.settleT += PRED_STEP;
+      const quiet = P.pinBodies.every(bodyQuiet);
+      if ((P.settleT > 1.4 && quiet) || P.settleT > 4.2) { P.done = true; P.clear = P.pinBodies.every(bodyDown); }
+    }
+  }
+}
 
 // ---------------- Audio ----------------
 // Everything is synthesized with Web Audio, so there are no sound files to load.
-let ac = null, master = null, sfx = null, far = null, noiseBuf = null, roll = null, muted = false, lastClack = 0;
+let ac = null, master = null, sfx = null, noiseBuf = null, roll = null, muted = false, lastClack = 0;
 function loopNoise() {
   const s = ac.createBufferSource(); s.buffer = noiseBuf; s.loop = true; s.start(0, Math.random() * 1.9); return s;
 }
@@ -915,10 +974,6 @@ function initAudio() {
     const g = ac.createGain(); g.gain.value = 0.3;
     sfx.connect(dl).connect(hp).connect(g); route(g, side, master);
   });
-  // other lanes: further away, mostly room sound
-  far = ac.createBiquadFilter(); far.type = 'lowpass'; far.frequency.value = 3200;
-  const farWet = ac.createGain(); farWet.gain.value = 1.2;
-  far.connect(master); far.connect(farWet).connect(verb);
   // rolling ball: a deep thunder-like roar (two stacked low-passes so no hiss gets through) plus a low wood
   // "growl", with a slight pulse once per turn of the ball; in the gutter a metal ring takes over
   const src = loopNoise(), pulse = ac.createGain(); pulse.gain.value = 1; pulse.connect(sfx);
@@ -1214,22 +1269,13 @@ function fanfare(kind, n = 1) {
   }
 }
 
-// ---- ambience: a quiet crowd murmur and pins crashing on other lanes now and then ----
+// ---- ambience: a quiet crowd murmur (the other lanes are empty, so no pin sounds from them) ----
 function startAmbience() {
   const src = loopNoise(), bp = ac.createBiquadFilter(), g = ac.createGain();
   bp.type = 'bandpass'; bp.frequency.value = 520; bp.Q.value = 0.7; g.gain.value = 0.08;
   const lfo = ac.createOscillator(), lfoAmt = ac.createGain(); lfo.frequency.value = 0.13; lfoAmt.gain.value = 0.03;
   lfo.connect(lfoAmt).connect(g.gain); lfo.start();
   src.connect(bp).connect(g).connect(master);
-  const next = () => setTimeout(() => { if (ac.state === 'running') distantCrash(); next(); }, 6000 + Math.random() * 12000);
-  next();
-}
-function distantCrash() {
-  const t = ac.currentTime, pan = (Math.random() < 0.5 ? -1 : 1) * (0.4 + Math.random() * 0.5), lvl = 0.12 + Math.random() * 0.12;
-  if (strikeBuf) { playRecording(t, { gain: lvl * 1.4, size: 0.5 + Math.random() * 0.5, pan, dest: far }); return; } // the same crash, heard from another lane
-  noiseHit(t, { freq: 500, q: 0.7, gain: lvl, d: 0.3, pan, dest: far });
-  tone(t, { freq: 90, to: 40, gain: lvl * 0.8, d: 0.3, pan, dest: far });
-  for (let i = 0; i < 8; i++) knock(t + Math.pow(Math.random(), 1.8) * 0.6, { f: pinPitch(), gain: lvl * 0.5, pan, dest: far });
 }
 function setMuted(m) {
   muted = m; if (master) master.gain.value = muted ? 0 : 0.8;
@@ -1343,7 +1389,6 @@ const keyDir = (k) => (k === 'ArrowLeft' || k === 'a' || k === 'A' ? -1 : k === 
 let state = 'intro', px = 0, shot = null, tState = 0, settleT = null, resultT = 0, gutterFlag = false, pending = null;
 const relFrom = new THREE.Vector3(), relTo = new THREE.Vector3();
 let best = 0; try { best = +localStorage.getItem('lane7-best') || 0; } catch (e) {}
-
 function newGame() {
   buildPlayers();
   if (ballInWorld) { world.removeBody(ballBody); ballInWorld = false; }
@@ -1421,13 +1466,13 @@ function launch() {
   if (!ballInWorld) { world.addBody(ballBody); ballInWorld = true; }
   standingBefore = standingCount();
   state = 'rolling'; tState = 0; settleT = null; gutterFlag = false;
-  shotHit = false; hitT = null; gutterSnd = false; slowUsed = false; trailPts.length = 0;
+  shotHit = false; hitT = null; gutterSnd = false; slowArmed = false; slowCued = false; slowWhoosh = false; trailPts.length = 0;
+  predictShot();
   thunk();
 }
 
 function pinsQuiet() {
-  return pins.every((p) => !p.inWorld || p.body.sleepState === CANNON.Body.SLEEPING ||
-    (p.body.velocity.length() < 0.06 && p.body.angularVelocity.length() < 0.5));
+  return pins.every((p) => !p.inWorld || bodyQuiet(p.body));
 }
 
 function evaluate() {
@@ -1573,8 +1618,7 @@ function setPaused(p) {
 }
 $('#pausebtn').addEventListener('click', () => setPaused(true));
 $('#resume').addEventListener('click', () => setPaused(false));
-$('#sound').addEventListener('click', () => setMuted(!muted));
-confirmButton('restart', '再按一次確定重新開始', () => {
+$('#sound').addEventListener('click', () => setMuted(!muted));confirmButton('restart', '再按一次確定重新開始', () => {
   msgEl.className = ''; $('#info').style.opacity = 0;
   setPaused(false);
   newGame();
@@ -1600,13 +1644,30 @@ rackPins(); renderBoard();
 
 const clock = new THREE.Clock();
 let elapsed = 0;
-// slow motion as the ball reaches a full rack: eases in, then back out shortly after the hit
-let slowAmt = 0, slowTarget = 0, slowUsed = false, slowT = 0;
+// Slow motion, only for a ball the look-ahead says will knock down every standing pin (strike or spare):
+// it slows as it nears the pins, holds, then speeds back up so the hit itself lands at full speed.
+// The amount follows the ball's distance to the head pin (dz, metres). The camera zoom lingers through the hit.
+let slowAmt = 0, zoomAmt = 0, slowArmed = false, slowCued = false, slowWhoosh = false, physAcc = 0;
+const SLOW_IN = [4.2, 2.8], SLOW_OUT = [1.5, 0.5]; // ease in between these distances, ease back out between these
+const smooth = (a, b, x) => { const t = clamp((x - a) / (b - a), 0, 1); return t * t * (3 - 2 * t); };
+const slowProfile = (dz) => (dz > SLOW_IN[1] ? smooth(SLOW_IN[0], SLOW_IN[1], dz) : smooth(SLOW_OUT[1], SLOW_OUT[0], dz));
 const zoomPos = new THREE.Vector3(), zoomLook = new THREE.Vector3();
 function update(dt) {
   elapsed += dt;
-  if (state !== 'rolling') slowTarget = 0;
-  slowAmt += (slowTarget - slowAmt) * (1 - Math.exp(-dt * (slowTarget ? 6 : 3)));
+  if (pred && !pred.done && state === 'rolling') runPrediction();
+  let slowWant = 0;
+  if (state === 'rolling' && ballInWorld) {
+    const dz = ballBody.position.z - HEAD_Z;
+    // decide once, as soon as the look-ahead is finished (too late to ease in smoothly = no slow motion this ball)
+    if (!slowCued && pred && pred.done) { slowCued = true; slowArmed = pred.clear && dz > SLOW_IN[1]; }
+    if (slowArmed && !shotHit && !gutterFlag) slowWant = slowProfile(dz);
+    if (slowWant > 0 && !slowWhoosh) { slowWhoosh = true; whoosh(); }
+  }
+  // ease into slow motion; come out exactly on the profile so the ball is back to full speed at the hit
+  slowAmt = slowWant < slowAmt ? slowWant : slowAmt + (slowWant - slowAmt) * (1 - Math.exp(-dt * 12));
+  const zoomWant = slowArmed && (state === 'rolling' || state === 'result') &&
+    ballBody.position.z - HEAD_Z < SLOW_IN[0] && (hitT === null || simClock - hitT < 1.1) ? 1 : 0;
+  zoomAmt += (zoomWant - zoomAmt) * (1 - Math.exp(-dt * (zoomWant ? 5 : 2.5)));
   const sdt = dt * (1 - 0.75 * slowAmt); // simulation time step
   simClock += sdt;
   if (state === 'aim') {
@@ -1632,11 +1693,17 @@ function update(dt) {
     if (bd % 5 === 0 && bd >= 5 && bd <= 35) notes.push(`對齊第 ${bd / 5} 支箭頭`);
     stanceEl.innerHTML = `站位 <b>第 ${bd} 板</b> <small>(由右數)</small>${notes.length ? ' · ' + notes.join(' · ') : ''}`;
   }
-  world.step(1 / 240, sdt, 16);
+  // fixed 1/240 s steps, counted here rather than by cannon's own accumulator, so world.time advances exactly
+  // like the look-ahead copy's (pins fall asleep by world.time; any drift would make the prediction wrong)
+  physAcc += sdt;
+  for (let n = 0; physAcc >= PRED_STEP && n < 16; n++) { world.step(PRED_STEP); physAcc -= PRED_STEP; }
+  physAcc = Math.min(physAcc, PRED_STEP);
 
   pins.forEach((p) => {
     if (!p.inWorld) return;
-    if (p.body.position.y < -2) { world.removeBody(p.body); p.inWorld = false; p.mesh.visible = false; return; }
+    // a pin that fell out of the alley: only hide it. Removing a body mid-shot reorders the world and the
+    // look-ahead copy would no longer match; sweepPins/rackPins take it out between balls.
+    if (p.body.position.y < -2) { p.mesh.visible = false; return; }
     p.mesh.position.copy(p.body.position); p.mesh.quaternion.copy(p.body.quaternion);
     if (!p.fell && p.body.position.y < 0.12) { // toppled onto the deck
       p.body.quaternion.vmult(UP, tmpV);
@@ -1656,16 +1723,16 @@ function update(dt) {
     const lift = clamp((cz + 14.6) / 16, 0, 1);
     wantPos.set(clamp(b.x, -0.6, 0.6) * 0.5, 0.72 + 0.5 * lift, cz);
     wantLook.set(clamp(b.x, -0.6, 0.6) * 0.3, 0.12, Math.min(b.z - 4, -18.6));
-    if (slowAmt > 0.001) { // slow motion: drop low and close behind the ball
-      zoomPos.set(clamp(b.x, -0.5, 0.5) * 0.4, 0.5, Math.max(b.z + 1.9, HEAD_Z + 2.1));
+    if (zoomAmt > 0.001) { // slow-motion camera: drop low and close behind the ball
+      zoomPos.set(clamp(b.x, -0.5, 0.5) * 0.4, 0.42, Math.max(b.z + 1.45, HEAD_Z + 1.5));
       zoomLook.set(clamp(b.x, -0.5, 0.5) * 0.4, 0.15, HEAD_Z - 0.4);
-      wantPos.lerp(zoomPos, slowAmt); wantLook.lerp(zoomLook, slowAmt);
+      wantPos.lerp(zoomPos, zoomAmt); wantLook.lerp(zoomLook, zoomAmt);
     }
   }
   const k = 1 - Math.exp(-dt * (state === 'rolling' ? 7 : 4.5));
   camPos.lerp(wantPos, k); camLook.lerp(wantLook, k);
   camera.position.copy(camPos); camera.lookAt(camLook);
-  const fov = 46 - 8 * slowAmt;
+  const fov = 46 - 10 * zoomAmt;
   if (Math.abs(camera.fov - fov) > 0.01) { camera.fov = fov; camera.updateProjectionMatrix(); }
   if (shake > 0.002) {
     shake *= Math.exp(-dt * 6);
@@ -1698,13 +1765,6 @@ function update(dt) {
     if (state === 'rolling') {
       tState += sdt;
       if (Math.abs(b.x) > W / 2 + 0.01 && b.z > HEAD_Z + 0.3) gutterFlag = true;
-      if (!slowUsed && standingBefore === 10 && !gutterFlag && b.z < HEAD_Z + 2.4 && b.z > HEAD_Z && Math.abs(b.x) < W / 2) {
-        slowUsed = true; slowTarget = 1; slowT = 0; whoosh();
-      }
-      if (slowTarget) {
-        slowT += dt;
-        if ((hitT !== null && simClock - hitT > 0.55) || slowT > 2.4 || b.z < LANE_END || b.y < -0.1) slowTarget = 0;
-      }
       if (settleT === null && (b.z < LANE_END - 0.05 || b.y < -0.5 || tState > 9 || (tState > 1 && ballBody.velocity.length() < 0.15))) settleT = 0;
       if (settleT !== null) { settleT += sdt; if ((settleT > 1.4 && pinsQuiet()) || settleT > 4.2) evaluate(); }
     } else {
