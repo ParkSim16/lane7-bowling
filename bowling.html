@@ -1,4 +1,4 @@
-<title>Lane 7 保齡球</title>
+<title>Park 保齡球</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -54,7 +54,12 @@ body {
 .fr.cur .no { color: var(--neon); }
 .fr.total .tv { flex: 1; display: grid; place-items: center; font-size: 22px; font-weight: 900; color: var(--amber); }
 
-#meta { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+#meta { position: relative; display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+/* the status chip sits in the true middle of the screen (whatever the widths left and right), the stance chip
+   right under it; the -13px keeps the status chip level with the pause button and the rack */
+#mid { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -13px); display: flex; flex-direction: column; align-items: center; gap: 6px; }
+/* on a narrow screen the stance chip is wider than the gap between the pause button and the rack: drop it below them */
+@media (max-width: 620px) { #stance { margin-top: 24px; } }
 #brand { font-family: var(--f-display); font-size: 20px; color: var(--neon); text-shadow: 0 0 10px rgba(255, 79, 123, 0.7); letter-spacing: 0.04em; }
 #status { font-size: 13px; color: var(--ink); background: var(--panel); border: 1px solid var(--line); border-radius: 999px; padding: 4px 12px; font-weight: 500; }
 #rack { display: grid; gap: 3px; justify-items: center; background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 6px 9px; }
@@ -63,16 +68,13 @@ body {
 #rack i.down { background: transparent; box-shadow: inset 0 0 0 1px rgba(220, 225, 255, 0.3); }
 
 #bottom { display: flex; flex-direction: column; align-items: center; gap: 10px; }
-#stance { font-size: 13px; font-weight: 500; color: var(--ink); background: var(--panel); border: 1px solid var(--line); border-radius: 999px;
+#stance { white-space: nowrap; font-size: 13px; font-weight: 500; color: var(--ink); background: var(--panel); border: 1px solid var(--line); border-radius: 999px;
   padding: 4px 12px; font-variant-numeric: tabular-nums; backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); }
 #stance b { color: var(--cyan); font-weight: 900; }
 #stance small { color: var(--muted); font-size: 11px; }
 #info { min-height: 20px; font-size: 14px; color: var(--cyan); font-weight: 700; text-shadow: 0 1px 8px rgba(0, 0, 0, 0.9); font-variant-numeric: tabular-nums; transition: opacity 0.4s; }
 #controls { display: flex; align-items: center; gap: 12px; width: min(560px, 100%); }
-#hint { flex: 1; text-align: center; font-size: 12.5px; line-height: 1.5; color: #c9cde0; text-wrap: balance; transition: color 0.2s;
-  background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 6px 10px; backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); }
-#hint.flash { color: var(--amber); }
-#hint b { color: var(--ink); font-weight: 700; }
+#controls .spacer { flex: 1; } /* the lane shows through between the buttons */
 .btn {
   pointer-events: auto; width: 52px; height: 52px; flex: 0 0 auto; border-radius: 50%;
   border: 1px solid var(--line); background: var(--panel); color: var(--ink);
@@ -254,18 +256,20 @@ body.paused #banner .band { animation-play-state: paused; }
     <div id="meta">
       <div class="brandwrap">
         <button class="btn" id="pausebtn" aria-label="暫停遊戲"><svg viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="4" width="4" height="16" rx="1"/><rect x="14" y="4" width="4" height="16" rx="1"/></svg></button>
-        <div id="brand">LANE 7</div>
+        <div id="brand">Park</div>
       </div>
-      <div id="status">第 1 格 · 第 1 球</div>
+      <div id="mid">
+        <div id="status">第 1 格 · 第 1 球</div>
+        <div id="stance" aria-live="polite">站位 <b>第 20 板</b> <small>(由右數)</small> · 正中央</div>
+      </div>
       <div id="rack" aria-label="剩餘球瓶"></div>
     </div>
   </div>
   <div id="bottom">
     <div id="info"></div>
-    <div id="stance" aria-live="polite">站位 <b>第 20 板</b> <small>(由右數)</small> · 正中央</div>
     <div id="controls">
       <button class="btn" id="left" aria-label="往左移動站位"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg></button>
-      <div id="hint"><b>按住畫面往上滑</b>把球丟出去，滑得越快球越快<br>滑出弧線會打出曲球 · ← → 調整站位</div>
+      <div class="spacer"></div>
       <button class="btn" id="right" aria-label="往右移動站位"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5l7 7-7 7"/></svg></button>
       <button class="btn" id="mute" aria-label="切換音效"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9h4l5-4v14l-5-4H4z"/><path id="wave" d="M16.5 8.5a5 5 0 0 1 0 7M19 6a8.5 8.5 0 0 1 0 12"/><path id="cross" d="M17 9l5 6M22 9l-5 6" style="display:none"/></svg></button>
     </div>
@@ -278,7 +282,7 @@ body.paused #banner .band { animation-play-state: paused; }
 
 <div class="overlay" id="start">
   <div class="card">
-    <h1>LANE 7</h1>
+    <h1>Park</h1>
     <p class="tag">第一人稱保齡球</p>
     <dl class="how">
       <dt>丟球</dt><dd>按住畫面往上滑，放開就出手。滑得越快，球速越快。</dd>
@@ -325,6 +329,8 @@ body.paused #banner .band { animation-play-state: paused; }
       <button class="cta" id="resume">繼續打球</button>
       <button class="ghost" id="restart">重新開始</button>
       <button class="ghost" id="sound">音效：開</button>
+      <button class="ghost" id="music">背景音樂：開</button>
+      <button class="ghost" id="quality">畫質：高</button>
       <button class="ghost" id="quit">結束遊戲</button>
       <details class="rules">
         <summary>玩法說明</summary>
@@ -355,6 +361,11 @@ body.paused #banner .band { animation-play-state: paused; }
 import * as THREE from 'three';
 import * as CANNON from 'cannon-es';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
+import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
 
 const $ = (s) => document.querySelector(s);
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
@@ -371,7 +382,7 @@ const ROW = SP * Math.sin(Math.PI / 3);
 const MAXX = W / 2 - R - 0.02;
 
 // Game version: bump together with CHANGELOG.md and the git tag on every push
-const GAME_VERSION = '1.5.0';
+const GAME_VERSION = '1.6.0';
 document.querySelectorAll('.ver').forEach((el) => { el.textContent = `v${GAME_VERSION}`; });
 
 try { await Promise.race([document.fonts.load('100px Monoton'), new Promise((r) => setTimeout(r, 1500))]); } catch (e) {}
@@ -379,7 +390,6 @@ try { await Promise.race([document.fonts.load('100px Monoton'), new Promise((r) 
 // ---------------- Renderer & scene ----------------
 const canvas = $('#c');
 const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
-renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
 renderer.outputColorSpace = THREE.SRGBColorSpace;
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
 renderer.toneMappingExposure = 1.05;
@@ -393,8 +403,70 @@ const pmrem = new THREE.PMREMGenerator(renderer);
 scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
 
 const camera = new THREE.PerspectiveCamera(46, 1, 0.03, 90);
+// Graphics quality. high: full resolution, sharp shadows, glossy lacquer and a neon glow (bloom);
+// mid: a bit lower resolution, no glow; low: for slow phones, plain materials and small shadows.
+const QUALITY = {
+  high: { label: '高', ratio: 2, shadow: 2048, bloom: true, gloss: true },
+  mid: { label: '中', ratio: 1.5, shadow: 1024, bloom: false, gloss: true },
+  low: { label: '低', ratio: 1, shadow: 512, bloom: false, gloss: false },
+};
+const QUALITY_ORDER = ['high', 'mid', 'low'];
+let quality = null, qualityAuto = true; // auto = the player has not picked one; it may step down if the game runs slow
+try { const q = localStorage.getItem('lane7-quality'); if (QUALITY[q]) { quality = q; qualityAuto = false; } } catch (e) {}
+if (!quality) quality = matchMedia('(pointer: coarse)').matches ? 'mid' : 'high';
+// Selective glow: only the neon (strips, lane-number signs) blooms. First the scene is drawn with everything
+// else painted black (so it still hides neon behind it) and blurred into a glow; then the normal picture is
+// drawn and the glow is added on top. Pins and the lane never glow, however bright the spotlight makes them.
+const glowComposer = new EffectComposer(renderer); glowComposer.renderToScreen = false;
+glowComposer.addPass(new RenderPass(scene, camera));
+glowComposer.addPass(new UnrealBloomPass(new THREE.Vector2(256, 256), 0.9, 0.5, 0.1));
+const composer = new EffectComposer(renderer);
+composer.addPass(new RenderPass(scene, camera));
+const addGlow = new ShaderPass(new THREE.ShaderMaterial({
+  uniforms: { baseTexture: { value: null }, glowTexture: { value: glowComposer.renderTarget2.texture } },
+  vertexShader: 'varying vec2 vUv; void main() { vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }',
+  fragmentShader: 'uniform sampler2D baseTexture, glowTexture; varying vec2 vUv; void main() { gl_FragColor = texture2D(baseTexture, vUv) + texture2D(glowTexture, vUv); }',
+}), 'baseTexture');
+composer.addPass(addGlow); composer.addPass(new OutputPass());
+const glowMats = new Set();  // materials that glow (filled in once the neon materials exist)
+const blackout = new THREE.MeshBasicMaterial({ color: 0x000000 }), stashed = new Map();
+function renderWithGlow() {
+  scene.traverse((o) => {
+    if (!o.visible) return;
+    if (o.isMesh && !glowMats.has(o.material)) {
+      if (o.material.transparent) { o.visible = false; stashed.set(o, null); } // shadows blobs, trails: just leave them out
+      else { stashed.set(o, o.material); o.material = blackout; }
+    } else if (o.isPoints || o.isLine || o.isSprite) { o.visible = false; stashed.set(o, null); }
+  });
+  const bg = scene.background; scene.background = null;
+  renderer.shadowMap.autoUpdate = false; // the black pass needs no shadows
+  glowComposer.render();
+  renderer.shadowMap.autoUpdate = true; scene.background = bg;
+  stashed.forEach((m, o) => { if (m) o.material = m; else o.visible = true; }); stashed.clear();
+  composer.render();
+}
+// Field of view: the camera keeps the same side-to-side view on any screen (lane 7, its gutters and a sliver
+// of the lanes next to it), so a wide monitor no longer shows the whole alley. The up-down angle follows from
+// the screen shape, but never below VIEW_V[0] (the aiming arrows must stay in view) or above VIEW_V[1] (a
+// phone held upright would get a fish-eye look).
+// While aiming the view is narrower still and tips down a little (like a bowler looking down the lane at the
+// pins): the pins come out about half again as big, with the arrows still in view in the lower half.
+// Once the ball is rolling the camera eases back out to the wider view, or the ball would drop out of frame.
+// The aiming view has a fixed up-down angle (AIM_FOV), so the pins are the same size on screen whatever the
+// window's shape; a narrow window (a phone held upright) just crops the near lane at the sides.
+const VIEW_H = 34, VIEW_V = [34, 60], AIM_FOV = 22;
+// The bowler stands on the approach (STAND_Z, 3.2 m behind the foul line) and looks at a point on the lane
+// (AIM_LOOK, tipping the view down about 5.6°, which keeps the pins in the upper middle of the screen).
+const STAND_Z = 3.2, AIM_LOOK = { y: 0, z: -11.3 };
+let baseFov = 46, aimFov = 46, heldScale = 1;
 function resize() {
+  const aspect = innerWidth / innerHeight, rad = THREE.MathUtils.degToRad;
+  const fit = (h, v) => clamp(THREE.MathUtils.radToDeg(2 * Math.atan(Math.tan(rad(h / 2)) / aspect)), v[0], v[1]);
+  baseFov = fit(VIEW_H, VIEW_V); aimFov = AIM_FOV;
+  heldScale = Math.tan(rad(23)) / Math.tan(rad(aimFov / 2)); // the ball in hand keeps its size on screen
+  renderer.setPixelRatio(Math.min(devicePixelRatio, QUALITY[quality].ratio));
   renderer.setSize(innerWidth, innerHeight, false);
+  [composer, glowComposer].forEach((c) => { c.setPixelRatio(renderer.getPixelRatio()); c.setSize(innerWidth, innerHeight); });
   camera.aspect = innerWidth / innerHeight;
   camera.updateProjectionMatrix();
 }
@@ -491,7 +563,8 @@ function pinGeometry() {
   return g;
 }
 const PIN_GEO = pinGeometry();
-const PIN_MAT = new THREE.MeshStandardMaterial({ map: pinTexture(), roughness: 0.28, envMapIntensity: 0.55 });
+// pins have a hard lacquer coat over the plastic: a sharp clear highlight on top of the softer base
+const PIN_MAT = new THREE.MeshPhysicalMaterial({ map: pinTexture(), roughness: 0.34, envMapIntensity: 0.55, clearcoat: 0.9, clearcoatRoughness: 0.12 });
 
 const pinSpots = [];
 for (let r = 0; r < 4; r++) for (let i = 0; i <= r; i++) pinSpots.push({ x: (i - r / 2) * SP, z: HEAD_Z - r * ROW, num: (r * (r + 1)) / 2 + i + 1, row: r, i });
@@ -499,7 +572,9 @@ for (let r = 0; r < 4; r++) for (let i = 0; i <= r; i++) pinSpots.push({ x: (i -
 // ---------------- Alley (visual) ----------------
 const laneTex = woodTexture(false); laneTex.repeat.set(1, 19.25 / 2.6);
 const apprTex = woodTexture(true); apprTex.repeat.set(1, 4.5 / 2.6);
-const laneMat = new THREE.MeshStandardMaterial({ map: laneTex, roughness: 0.2, envMapIntensity: 0.45 });
+// the lane is finished wood under a glossy, oiled coat: the ceiling lights streak across it
+const laneMat = new THREE.MeshPhysicalMaterial({ map: laneTex, roughness: 0.3, envMapIntensity: 0.45, clearcoat: 0.75, clearcoatRoughness: 0.07 });
+const GLOSS = [[PIN_MAT, 0.9], [laneMat, 0.75]]; // [material, clearcoat] (low quality turns the coat off)
 const apprMat = new THREE.MeshStandardMaterial({ map: apprTex, roughness: 0.45, envMapIntensity: 0.3 });
 const gutterMat = new THREE.MeshStandardMaterial({ color: 0x2b2f3d, metalness: 0.7, roughness: 0.35, side: THREE.DoubleSide });
 const darkMat = new THREE.MeshStandardMaterial({ color: 0x151829, roughness: 0.8 });
@@ -508,6 +583,7 @@ const arrowMat = new THREE.MeshStandardMaterial({ color: 0x5a1c12, roughness: 0.
 const neonPink = new THREE.MeshBasicMaterial({ color: 0xff4f7b });
 const neonAmber = new THREE.MeshBasicMaterial({ color: 0xffc65c });
 const ceilingLight = new THREE.MeshBasicMaterial({ color: 0xffe6bf });
+glowMats.add(neonPink); glowMats.add(neonAmber);
 
 function plane(w, h, mat, x, y, z, rotX = -Math.PI / 2) {
   const m = new THREE.Mesh(new THREE.PlaneGeometry(w, h), mat);
@@ -522,6 +598,12 @@ const arrowGeo = new THREE.ShapeGeometry(arrowShape); arrowGeo.rotateX(-Math.PI 
 const dotGeo = new THREE.CircleGeometry(0.011, 12); dotGeo.rotateX(-Math.PI / 2);
 const gutterGeo = new THREE.CylinderGeometry(0.12, 0.12, 19.25, 18, 1, true, -Math.PI / 2, Math.PI); gutterGeo.rotateX(Math.PI / 2);
 
+const arrowSpots = [], dotSpots = [], otherRacks = [];
+function laneMarks(geo, list) { // one draw call for every copy instead of one each
+  const im = new THREE.InstancedMesh(geo, arrowMat, list.length), m = new THREE.Matrix4();
+  list.forEach((p, i) => { m.makeTranslation(p[0], p[1], p[2]); im.setMatrixAt(i, m); });
+  scene.add(im);
+}
 function buildLane(xo, num, main) {
   const lane = plane(W, 19.25, laneMat, xo, 0, LANE_END / 2); lane.receiveShadow = true;
   const ap = plane(W + 2 * GUT + 0.1, 4.6, apprMat, xo, 0, 2.3); ap.receiveShadow = true;
@@ -532,27 +614,29 @@ function buildLane(xo, num, main) {
     box(0.06, 0.95, 3.5, darkMat, xo + s * 0.86, 0.475, -18.75);
     box(0.012, 0.012, 3.5, main ? neonPink : neonAmber, xo + s * 0.828, 0.95, -18.75);
   }
-  const bw = W / 39;
+  const bw = W / 39; // arrows and dots are collected and drawn all at once (see laneMarks below)
   [5, 10, 15, 20, 25, 30, 35].forEach((b) => {
     const x = xo + W / 2 - (b - 0.5) * bw, d = Math.abs(b - 20) / 5;
-    const a = new THREE.Mesh(arrowGeo, arrowMat); a.position.set(x, 0.001, -4.88 + d * 0.152); scene.add(a);
+    arrowSpots.push([x, 0.001, -4.88 + d * 0.152]);
   });
   [3, 5, 8, 11, 14, 29, 32, 35, 37].forEach((b) => {
-    const dm = new THREE.Mesh(dotGeo, arrowMat); dm.position.set(xo + W / 2 - (b - 0.5) * bw, 0.001, -2.13); scene.add(dm);
-    const dm2 = dm.clone(); dm2.position.z = 1.8; scene.add(dm2);
+    const x = xo + W / 2 - (b - 0.5) * bw;
+    dotSpots.push([x, 0.001, -2.13], [x, 0.001, 1.8]);
   });
   box(1.72, 0.02, 1.25, blackMat, xo, -0.36, LANE_END - 0.6);
   plane(1.72, 1.4, blackMat, xo, 0.3, -20.4, 0);
   const mask = plane(1.86, 0.8, new THREE.MeshBasicMaterial({ map: maskingTexture(num, main), toneMapped: false }), xo, 1.36, -17.85, 0);
+  glowMats.add(mask.material); // the lane-number sign glows
   box(0.1, 0.02, 20, ceilingLight, xo, 3.15, -8);
   if (!main) {
     const inst = new THREE.InstancedMesh(PIN_GEO, PIN_MAT, 10); const m = new THREE.Matrix4();
     pinSpots.forEach((s, k) => { m.makeTranslation(xo + s.x, 0, s.z); inst.setMatrixAt(k, m); });
-    inst.castShadow = true; scene.add(inst);
+    inst.castShadow = true; scene.add(inst); otherRacks.push(inst);
   }
   return mask;
 }
 [[-3.5, 5], [-1.75, 6], [0, 7], [1.75, 8], [3.5, 9]].forEach(([x, n]) => buildLane(x, n, n === 7));
+laneMarks(arrowGeo, arrowSpots); laneMarks(dotGeo, dotSpots);
 plane(12, 30, new THREE.MeshStandardMaterial({ color: 0x0c0e1a, roughness: 1 }), 0, 3.2, -8, Math.PI / 2);
 box(9, 0.025, 0.025, neonPink, 0, 1.77, -17.84);
 box(9, 0.018, 0.018, neonAmber, 0, 0.955, -17.84);
@@ -566,6 +650,20 @@ spot.castShadow = true; spot.shadow.mapSize.set(1024, 1024); spot.shadow.camera.
 scene.add(spot, spot.target);
 // ceiling lights along the lane, from the bowler towards the pins (the transitions switch them one by one)
 const laneLights = [1, -4, -9, -14].map((z) => { const p = new THREE.PointLight(0xffe2bd, 7, 0, 2); p.position.set(0, 2.7, z); scene.add(p); return p; });
+
+function setQuality(q, chosen = false) {
+  quality = q; const Q = QUALITY[q];
+  if (chosen) { qualityAuto = false; try { localStorage.setItem('lane7-quality', q); } catch (e) {} }
+  resize();
+  if (spot.shadow.mapSize.x !== Q.shadow) {
+    spot.shadow.mapSize.set(Q.shadow, Q.shadow);
+    if (spot.shadow.map) { spot.shadow.map.dispose(); spot.shadow.map = null; }
+  }
+  otherRacks.forEach((r) => { r.castShadow = q !== 'low'; });
+  GLOSS.forEach(([m, c]) => { m.clearcoat = Q.gloss ? c : 0; });
+  $('#quality').textContent = `畫質：${Q.label}${qualityAuto ? '（自動）' : ''}`;
+}
+setQuality(quality);
 
 // Pins (dynamic meshes, origin at centre of mass)
 const PIN_GEO_DYN = PIN_GEO.clone(); PIN_GEO_DYN.translate(0, -COM, 0);
@@ -771,8 +869,7 @@ function updateLights(dt) {
   laneLights.forEach((p, i) => { p.intensity = POINT_I * lit[i]; });
   const room = lit[5];
   hemi.intensity = HEMI_I * (0.2 + 0.8 * room);
-  ceilingLight.color.copy(CEIL_COLOR).multiplyScalar(0.12 + 0.88 * room);
-  fxLightI *= Math.exp(-dt * 4); fxLight.intensity = fxLightI;
+  ceilingLight.color.copy(CEIL_COLOR).multiplyScalar(0.12 + 0.88 * room);  fxLightI *= Math.exp(-dt * 4); fxLight.intensity = fxLightI;
   spotBoost *= Math.exp(-dt * 3); spot.intensity = SPOT_I * lit[4] + spotBoost;
   if (neonParty > 0) {
     neonParty -= dt;
@@ -782,8 +879,7 @@ function updateLights(dt) {
   } else {
     neonPink.color.copy(PINK).multiplyScalar(0.15 + 0.85 * room);
     neonAmber.color.copy(AMBER).multiplyScalar(0.15 + 0.85 * room);
-  }
-}
+  }}
 const flashEl = $('#flash');
 function flashScreen(kind) { flashEl.className = kind; void flashEl.offsetWidth; flashEl.classList.add('go'); }
 
@@ -821,6 +917,8 @@ function celebrate(kind, n = 1) {
 // Every body is built by a factory stored on it as body.make, so the whole world can be copied for the
 // look-ahead prediction (see predictShot): same settings, same bodies in the same order → the same result.
 const mLane = new CANNON.Material('lane'), mBall = new CANNON.Material('ball'), mPin = new CANNON.Material('pin');
+// pin action assist settings (see makePinAssist): reach = collision width vs the drawn pin
+const PIN_ASSIST = { reach: 1.1, push: 0.8, back: 0.5, topple: 6, jump: 0.5, times: 2 };
 function makeWorld() {
   const w = new CANNON.World({ gravity: new CANNON.Vec3(0, -9.82, 0) });
   w.allowSleep = true;
@@ -871,8 +969,11 @@ ballBody.addEventListener('collide', (e) => {
 function makePin() {
   const body = new CANNON.Body({ mass: 1.5, material: mPin, linearDamping: 0.02, angularDamping: 0.06 });
   body.sleepSpeedLimit = 0.08; body.sleepTimeLimit = 0.4;
-  body.addShape(new CANNON.Cylinder(0.056, 0.034, 0.2, 10), new CANNON.Vec3(0, 0.1 - COM, 0));
-  body.addShape(new CANNON.Cylinder(0.03, 0.052, 0.18, 10), new CANNON.Vec3(0, 0.29 - COM, 0));
+  // The collision body is 10% wider than the drawn pin (the base stays true, so pins stand the same): the
+  // physics engine passes on pin-to-pin hits weakly, and the extra reach brings the chain reactions back.
+  const F = PIN_ASSIST.reach;
+  body.addShape(new CANNON.Cylinder(0.056 * F, 0.034, 0.2, 10), new CANNON.Vec3(0, 0.1 - COM, 0));
+  body.addShape(new CANNON.Cylinder(0.03 * F, 0.052 * F, 0.18, 10), new CANNON.Vec3(0, 0.29 - COM, 0));
   body.make = makePin; return body;
 }
 const pins = pinSpots.map((s) => {
@@ -929,6 +1030,33 @@ function hookForce(ball) {
 }
 world.addEventListener('preStep', () => { if (ballInWorld && shot) hookForce(ballBody); });
 
+// ---- pin action assist ----
+// Tuned with a test bench of fixed shots: on a pocket hit the plain physics averaged about 6 pins and almost no
+// strikes; with the wider pins above and this kick it is about 8.3 pins and ~40% strikes.
+// When a pin is struck (its sideways speed jumps by more than `jump` m/s in one step), it gets extra speed in
+// the direction it is going (`push` × the jump, only half of that straight back) and a spin that tips it over
+// that way (`topple`). At most `times` kicks per pin per ball, so the chain cannot run away.
+// Deterministic: the look-ahead copy runs the same assist, so slow motion still predicts the real result.
+// (The settings, PIN_ASSIST, are at the top of the physics section.)
+function makePinAssist(bodies) {
+  const A = PIN_ASSIST, prev = new Map(), kicks = new Map();
+  return () => {
+    for (const b of bodies) {
+      const vx = b.velocity.x, vz = b.velocity.z, sp = Math.hypot(vx, vz);
+      const jump = sp - (prev.has(b) ? prev.get(b) : sp), n = kicks.get(b) || 0;
+      prev.set(b, sp);
+      if (n >= A.times || jump < A.jump) continue;
+      kicks.set(b, n + 1);
+      const nx = vx / sp, nz = vz / sp;
+      b.velocity.x += nx * jump * A.push; b.velocity.z += nz * jump * A.push * A.back;
+      b.angularVelocity.x += nz * jump * A.topple; b.angularVelocity.z -= nx * jump * A.topple;
+      prev.set(b, Math.hypot(b.velocity.x, b.velocity.z));
+    }
+  };
+}
+let pinAssist = null; // set at launch, cleared when the pinsetter starts
+world.addEventListener('postStep', () => { if (pinAssist) pinAssist(); });
+
 // ---- look-ahead: will this ball knock down every standing pin? ----
 // Right after release, copy the world and run the copy ahead in the background (a few dozen physics steps
 // per frame) until the pins settle. The physics is deterministic, so the copy ends the way the real shot will,
@@ -946,9 +1074,10 @@ function predictShot() {
     c.invInertiaWorld.elements = b.invInertiaWorld.elements.slice(); // exact copy (recomputing rounds differently)
     w.addBody(c); copies.set(b, c);
   }
-  const ball = copies.get(ballBody);
+  const ball = copies.get(ballBody), pinBodies = pins.filter((p) => p.inWorld).map((p) => copies.get(p.body));
   w.addEventListener('preStep', () => hookForce(ball));
-  pred = { w, ball, pinBodies: pins.filter((p) => p.inWorld).map((p) => copies.get(p.body)), t: 0, settleT: null, done: false, clear: false };
+  const assist = makePinAssist(pinBodies); w.addEventListener('postStep', assist); // same kicks as the real world
+  pred = { w, ball, pinBodies, t: 0, settleT: null, done: false, clear: false };
 }
 // Runs for up to PRED_BUDGET_MS each frame. Stops as soon as every standing pin is down (that is all slow
 // motion needs to know); otherwise uses the same end-of-shot rule as the real game (settle, pins stop).
@@ -970,7 +1099,7 @@ function runPrediction() {
 
 // ---------------- Audio ----------------
 // Everything is synthesized with Web Audio, so there are no sound files to load.
-let ac = null, master = null, sfx = null, noiseBuf = null, roll = null, muted = false, lastClack = 0;
+let ac = null, master = null, sfx = null, verbIn = null, noiseBuf = null, roll = null, muted = false, lastClack = 0;
 function loopNoise() {
   const s = ac.createBufferSource(); s.buffer = noiseBuf; s.loop = true; s.start(0, Math.random() * 1.9); return s;
 }
@@ -994,7 +1123,7 @@ function initAudio() {
     }
   }
   const verb = ac.createConvolver(); verb.buffer = ir; verb.connect(master);
-  const wet = ac.createGain(); wet.gain.value = 0.26; wet.connect(verb);
+  const wet = ac.createGain(); wet.gain.value = 0.26; wet.connect(verb); verbIn = wet;
   // a gentle low-end lift for weight (not so much that it gets boomy)
   sfx = ac.createBiquadFilter(); sfx.type = 'lowshelf'; sfx.frequency.value = 150; sfx.gain.value = 3;
   sfx.connect(master); sfx.connect(wet);
@@ -1020,7 +1149,7 @@ function initAudio() {
   lfo.connect(lfoAmt).connect(pulse.gain); lfo.start();
   roll = { rumble, rumbleF, tex, texF, gut, lfo, lfoAmt };
   loadStrike();
-  startAmbience();
+  startMusic();
 }
 
 // ---- recorded crash ----
@@ -1152,6 +1281,7 @@ function clack(v, heavy, x = 0) {
 function crash(v, standing = 10) {
   if (!ac) return;
   const t = ac.currentTime, amp = clamp(v / 8, 0.45, 1); lastClack = t;
+  duckMusic(0.4, 1.0);
   // the real recording for any hit into three or more pins; while it plays, the synthesized pin hits stay quiet
   if (strikeBuf && standing >= 3) {
     const size = standing / 10;
@@ -1196,6 +1326,36 @@ function pitThud(v) {
   else knock(t + 0.03, { f: PIN_SOUND.f * 0.7, gain: 0.3 });
 }
 // ---- the pinsetter and the house lights ----
+// The moving parts: an electric drive that whines up with speed, and the chain that rattles while it turns.
+// updatePinsetter feeds it how fast the table and the bar are moving (0..1), so the sound follows the motion.
+let drive = null;
+function machineMotion(v) {
+  if (!ac) return;
+  if (!drive) {
+    const o = ac.createOscillator(), lp = ac.createBiquadFilter(), og = ac.createGain();
+    o.type = 'sawtooth'; o.frequency.value = 70; lp.type = 'lowpass'; lp.frequency.value = 420; lp.Q.value = 4; og.gain.value = 0;
+    o.connect(lp).connect(og).connect(sfx); o.start();
+    const n = loopNoise(), bp = ac.createBiquadFilter(), am = ac.createGain(), cg = ac.createGain();
+    bp.type = 'bandpass'; bp.frequency.value = 1900; bp.Q.value = 1.4; am.gain.value = 0.5; cg.gain.value = 0;
+    const lfo = ac.createOscillator(), lfoAmt = ac.createGain(); lfo.type = 'square'; lfo.frequency.value = 18; lfoAmt.gain.value = 0.5;
+    lfo.connect(lfoAmt).connect(am.gain); lfo.start();
+    n.connect(bp).connect(am).connect(cg).connect(sfx);
+    drive = { o, lp, og, cg, lfo };
+  }
+  const t = ac.currentTime, k = 0.05;
+  drive.og.gain.setTargetAtTime(0.09 * v, t, k);
+  drive.o.frequency.setTargetAtTime(60 + 110 * v, t, k);
+  drive.lp.frequency.setTargetAtTime(300 + 700 * v, t, k);
+  drive.cg.gain.setTargetAtTime(0.07 * v, t, k);
+  drive.lfo.frequency.setTargetAtTime(10 + 22 * v, t, k);
+}
+// air cylinders on the table: the gripper closing on the pins, letting go, the rack dropping out
+function hiss(level = 1, d = 0.22) {
+  if (!ac) return; const t = ac.currentTime;
+  noiseHit(t, { type: 'highpass', freq: 3200, q: 0.6, gain: 0.12 * level, a: 0.01, d });
+  noiseHit(t, { type: 'bandpass', freq: 5200, q: 2, gain: 0.06 * level, a: 0.005, d: d * 0.6 });
+  knock(t, { f: 900, gain: 0.12 * level, d: 0.02, tap: 0.6, jitter: 0.04, tilt: 0.2 }); // the latch
+}
 let humGain = null;
 function machineHum(on) { // motor and chains behind the masking panel
   if (!ac) return;
@@ -1309,13 +1469,14 @@ function stab(t, freqs, dur, gain) {
     o.connect(lp); o.start(t); o.stop(t + dur + 0.05);
   }));
 }
-function bell(t, f, gain, d = 0.6) {
-  tone(t, { freq: f, gain, d }); tone(t, { freq: f * 2.76, gain: gain * 0.3, d: d * 0.4 }); tone(t, { freq: f * 5.4, gain: gain * 0.12, d: d * 0.2 });
+function bell(t, f, gain, d = 0.6, dest = sfx) {
+  tone(t, { freq: f, gain, d, dest }); tone(t, { freq: f * 2.76, gain: gain * 0.3, d: d * 0.4, dest }); tone(t, { freq: f * 5.4, gain: gain * 0.12, d: d * 0.2, dest });
 }
 const NOTE = (s) => 261.63 * Math.pow(2, s / 12); // semitones from middle C
 const chord = (root, shape = [0, 4, 7, 12]) => shape.map((s) => NOTE(root + s));
 function fanfare(kind, n = 1) {
   if (!ac) return; const t = ac.currentTime + 0.05;
+  duckMusic(0.15, kind === 'spare' ? 1.2 : n < 3 ? 1.8 : 2.8);
   if (kind === 'spare') {
     stab(t, chord(2, [0, 4, 7]), 0.2, 0.04); stab(t + 0.15, chord(7), 0.55, 0.05);
     [14, 19, 26].forEach((s, i) => bell(t + 0.15 + i * 0.07, NOTE(s), 0.08));
@@ -1336,13 +1497,76 @@ function fanfare(kind, n = 1) {
   }
 }
 
-// ---- ambience: a quiet crowd murmur (the other lanes are empty, so no pin sounds from them) ----
-function startAmbience() {
-  const src = loopNoise(), bp = ac.createBiquadFilter(), g = ac.createGain();
-  bp.type = 'bandpass'; bp.frequency.value = 520; bp.Q.value = 0.7; g.gain.value = 0.08;
-  const lfo = ac.createOscillator(), lfoAmt = ac.createGain(); lfo.frequency.value = 0.13; lfoAmt.gain.value = 0.03;
-  lfo.connect(lfoAmt).connect(g.gain); lfo.start();
-  src.connect(bp).connect(g).connect(master);
+// (No constant ambience: the filtered-noise crowd murmur came across as a steady hiss, and the background
+// music now fills the room instead.)
+
+// ---- background music: a laid-back jukebox groove from the house speakers ----
+// Electric-piano chords, a round bass, soft drums and now and then a few bell notes, all synthesized and
+// scheduled a little ahead of time. It plays through a "speaker" filter into the room reverb, and ducks
+// under the big moments (the crash, the fanfares).
+let musicOn = true;
+try { musicOn = localStorage.getItem('lane7-music') !== 'off'; } catch (e) {}
+$('#music').textContent = `背景音樂：${musicOn ? '開' : '關'}`;
+let musicBus = null, musicDuck = null, musicTimer = null, mStep = 0, mNext = 0;
+const BPM = 92, STEP = 60 / BPM / 4, MUSIC_VOL = 0.55;
+// Fmaj7 – G6 – Em7 – Am7 (semitones from middle C), bass roots an octave or two down
+const PROG = [
+  { ch: [-7, -3, 0, 4], bass: -19 }, { ch: [-5, -1, 2, 4], bass: -17 },
+  { ch: [-8, -5, -1, 2], bass: -20 }, { ch: [-3, 0, 4, 7], bass: -15 },
+];
+function startMusic() {
+  musicDuck = ac.createGain(); musicDuck.gain.value = 1;
+  musicBus = ac.createGain(); musicBus.gain.value = 0;
+  const hp = ac.createBiquadFilter(), lp = ac.createBiquadFilter();
+  hp.type = 'highpass'; hp.frequency.value = 70; lp.type = 'lowpass'; lp.frequency.value = 4200;
+  musicDuck.connect(hp).connect(lp).connect(musicBus);
+  musicBus.connect(master); const send = ac.createGain(); send.gain.value = 0.9; musicBus.connect(send).connect(verbIn);
+  setMusic(musicOn);
+}
+function setMusic(on) {
+  musicOn = on;
+  try { localStorage.setItem('lane7-music', on ? 'on' : 'off'); } catch (e) {}
+  $('#music').textContent = `背景音樂：${on ? '開' : '關'}`;
+  if (!ac || !musicBus) return;
+  const t = ac.currentTime;
+  musicBus.gain.cancelScheduledValues(t); musicBus.gain.setTargetAtTime(on ? MUSIC_VOL : 0, t, on ? 0.8 : 0.15);
+  clearInterval(musicTimer); musicTimer = null;
+  if (on) { mNext = t + 0.1; musicTimer = setInterval(scheduleMusic, 40); }
+}
+// the music steps back for a moment (level 0..1) and comes back over a couple of seconds
+function duckMusic(level = 0.35, hold = 1.2) {
+  if (!musicDuck) return; const t = ac.currentTime, g = musicDuck.gain;
+  g.cancelScheduledValues(t); g.setTargetAtTime(level, t, 0.04); g.setTargetAtTime(1, t + hold, 0.7);
+}
+function scheduleMusic() {
+  if (ac.state !== 'running') return;
+  if (mNext < ac.currentTime) mNext = ac.currentTime + 0.05; // the tab was asleep: pick up from now
+  while (mNext < ac.currentTime + 0.2) { playStep(mStep, mNext); mStep++; mNext += STEP; }
+}
+function epiano(t, f, gain, d) { // a soft Rhodes-like note: a sine with a quiet bell partial and a little tremolo
+  const dest = musicDuck;
+  tone(t, { freq: f, gain, a: 0.006, d, dest });
+  tone(t, { freq: f * 2, gain: gain * 0.25, a: 0.004, d: d * 0.35, dest });
+  tone(t, { type: 'triangle', freq: f * 0.5, gain: gain * 0.35, a: 0.01, d: d * 0.8, dest });
+}
+function playStep(n, t) {
+  const s = n % 16, bar = Math.floor(n / 16), c = PROG[bar % PROG.length], dest = musicDuck;
+  if (s % 2 === 1) t += STEP * 0.16; // a lazy swing on the off-16ths
+  // chords: a long one on the 1, short pushes on the "and" of 2 and on 4
+  if (s === 0) c.ch.forEach((x, i) => epiano(t + i * 0.012, NOTE(x), 0.032, 2.2));
+  else if (s === 6 || s === 11) c.ch.forEach((x) => epiano(t, NOTE(x), 0.02, 0.45));
+  // bass: root, a walk up to the fifth, back to the root
+  const bassAt = { 0: 0, 7: 7, 8: 0, 14: 12 };
+  if (s in bassAt) tone(t, { type: 'triangle', freq: NOTE(c.bass + bassAt[s]), gain: s === 0 ? 0.16 : 0.11, a: 0.008, d: s === 0 ? 0.6 : 0.3, dest });
+  // drums: soft kick, a rim click on 2 and 4, shuffling hats
+  if (s === 0 || s === 10) tone(t, { freq: 105, to: 42, gain: 0.22, a: 0.003, d: 0.2, dest });
+  if (s === 4 || s === 12) noiseHit(t, { freq: 1900, q: 2.2, gain: 0.07, d: 0.045, dest });
+  if (s % 2 === 0) noiseHit(t, { type: 'highpass', freq: 7500, q: 0.7, gain: s % 4 === 2 ? 0.035 : 0.018, d: 0.03, pan: 0.25, dest });
+  // every other bar a few bell notes drift down over the chord
+  if (bar % 2 === 1 && (s === 2 || s === 5 || s === 9)) {
+    const top = [...c.ch].sort((a, b) => b - a), k = s === 2 ? 0 : s === 5 ? 1 : 2;
+    bell(t, NOTE(top[k] + 12), 0.025, 1.1, dest);
+  }
 }
 function setMuted(m) {
   muted = m; if (master) master.gain.value = muted ? 0 : 0.8;
@@ -1448,7 +1672,8 @@ function showInfo(text) {
   const el = $('#info'); el.textContent = text; el.style.opacity = 1;
   clearTimeout(infoTimer); infoTimer = setTimeout(() => { el.style.opacity = 0; }, 4200);
 }
-function flashHint() { const h = $('#hint'); h.classList.add('flash'); setTimeout(() => h.classList.remove('flash'), 900); }
+// a swipe too short to throw: say so where the ball speed normally shows (the hint bar is gone)
+function flashHint() { showInfo('往上滑長一點，球才會丟出去'); }
 
 // ---------------- Pinsetter ----------------
 // Works like the machine behind a real lane: the sweep bar drops in front of the pins and pushes the fallen
@@ -1511,6 +1736,7 @@ let setter = null; // { plan, t, fired, onDone, cardAt, onCard }
 const _held = new THREE.Quaternion(), _up = new THREE.Quaternion();
 function runPinsetter(kind, onDone, cardAt = null, onCard = null) {
   setter = { plan: PLANS[kind], t: 0, fired: 0, onDone, cardAt, onCard };
+  pinAssist = null; // the bar shoving pins into the pit must not set off the assist
   machineHum(true);
 }
 function setterEvent(name) {
@@ -1518,7 +1744,7 @@ function setterEvent(name) {
   else if (name === 'rakeOff') { world.removeBody(rakeBody); clunk(0.7); }
   else if (name === 'clunk') clunk(1);
   else if (name === 'grab') { // the table closes on every pin still standing and takes it up
-    clunk(0.6);
+    clunk(0.6); hiss(1);
     pins.forEach((p) => {
       if (!p.inWorld || bodyDown(p.body)) return;
       const b = p.body.position, q = p.body.quaternion;
@@ -1529,7 +1755,7 @@ function setterEvent(name) {
     pins.forEach((p) => { if (p.held) return; if (p.inWorld) world.removeBody(p.body); p.inWorld = false; p.mesh.visible = false; });
   } else if (name === 'hang') { // ten fresh pins in the table
     pins.forEach((p) => { p.hang = true; p.mesh.visible = true; p.mesh.quaternion.identity(); });
-  } else if (name === 'place') { pins.forEach((p) => { p.hang = false; }); rackPins(); pinsDown(10); }
+  } else if (name === 'place') { pins.forEach((p) => { p.hang = false; }); rackPins(); pinsDown(10); hiss(0.8, 0.3); }
   else if (name === 'release') { // standing pins back on the deck where they were, upright
     let n = 0;
     pins.forEach((p) => {
@@ -1540,7 +1766,7 @@ function setterEvent(name) {
       world.addBody(p.body); p.inWorld = true; p.body.sleep(); p.fell = false;
       p.mesh.position.copy(p.body.position); p.mesh.quaternion.identity();
     });
-    updateRack(); pinsDown(n);
+    updateRack(); pinsDown(n); if (n) hiss(0.7);
   }
 }
 // before the physics step: move the machine to where the plan says, and give the bar the velocity to get there
@@ -1551,12 +1777,15 @@ function updatePinsetter(dt) {
   while (S.fired < P.events.length && P.events[S.fired][0] <= S.t) setterEvent(P.events[S.fired++][1]);
   if (S.cardAt !== null && S.t >= S.cardAt) { S.cardAt = null; S.onCard?.(); }
   const ty = track(P.table, S.t, TABLE_Y);
-  if (ty !== null) table.position.y = ty;
+  let moving = 0; // m/s of the fastest moving part, for the drive sound
+  if (ty !== null) { if (dt > 0) moving = Math.abs(ty - table.position.y) / dt; table.position.y = ty; }
   const ry = track(P.rakeY, S.t, RAKE_Y), rz = track(P.rakeZ, S.t, RAKE_Z) ?? RAKE_Z.FRONT;
   if (ry !== null && world.bodies.includes(rakeBody) && dt > 0) {
     const b = rakeBody.position;
     rakeBody.velocity.set(0, (ry - b.y) / dt, (rz - b.z) / dt);
+    moving = Math.max(moving, rakeBody.velocity.length());
   }
+  machineMotion(clamp(moving / 2.5, 0, 1));
   // pins riding in the table
   const lift = P.table ? clamp((S.t - 0.45) / 0.45, 0, 1) : 1;
   pins.forEach((p) => {
@@ -1567,7 +1796,7 @@ function updatePinsetter(dt) {
   });
   if (S.t >= P.end) {
     while (S.fired < P.events.length) setterEvent(P.events[S.fired++][1]);
-    setter = null; machineHum(false); table.position.y = TABLE_Y.UP;
+    setter = null; machineHum(false); machineMotion(0); table.position.y = TABLE_Y.UP;
     S.onDone?.();
   }
 }
@@ -1578,7 +1807,7 @@ function syncRake() {
 }
 function stopMachines() { // restart / quit in the middle of a cycle
   if (world.bodies.includes(rakeBody)) world.removeBody(rakeBody);
-  setter = null; machineHum(false); table.position.y = TABLE_Y.UP; syncRake();
+  setter = null; machineHum(false); machineMotion(0); table.position.y = TABLE_Y.UP; syncRake();
   pins.forEach((p) => { p.held = null; p.hang = false; });
 }
 function clearPins() {
@@ -1629,7 +1858,7 @@ function updateCine(dt) {
   while (C.fired < plan.events.length && plan.events[C.fired][0] <= C.t) plan.events[C.fired++][1]();
   if (C.kind === 'start') {
     const u = ease(clamp((C.t - 2.2) / 1.2, 0, 1));
-    camPos.lerpVectors(DECK_VIEW.pos, wantPos.set(px, 1.42, 1.7), u); camLook.lerpVectors(DECK_VIEW.look, wantLook.set(px * 0.25, 0.15, -18.6), u);
+    camPos.lerpVectors(DECK_VIEW.pos, wantPos.set(px, 1.42, STAND_Z), u); camLook.lerpVectors(DECK_VIEW.look, wantLook.set(px * 0.25, AIM_LOOK.y, AIM_LOOK.z), u);
   } else {
     const u = ease(clamp(C.t / 2.2, 0, 1));
     camPos.lerpVectors(C.fromPos, WIDE_VIEW.pos, u); camLook.lerpVectors(C.fromLook, WIDE_VIEW.look, u);
@@ -1729,6 +1958,7 @@ function launch() {
   ballBody.angularVelocity.set(-speed / R * 0.7, spin * 14, 0);
   if (!ballInWorld) { world.addBody(ballBody); ballInWorld = true; }
   standingBefore = standingCount();
+  pinAssist = makePinAssist(pins.filter((p) => p.inWorld).map((p) => p.body));
   state = 'rolling'; tState = 0; settleT = null; gutterFlag = false;
   shotHit = false; hitT = null; gutterSnd = false; slowArmed = false; slowCued = false; slowWhoosh = false; trailPts.length = 0;
   predictShot();
@@ -1889,6 +2119,8 @@ function setPaused(p) {
 $('#pausebtn').addEventListener('click', () => setPaused(true));
 $('#resume').addEventListener('click', () => setPaused(false));
 $('#sound').addEventListener('click', () => setMuted(!muted));
+$('#music').addEventListener('click', () => setMusic(!musicOn));
+$('#quality').addEventListener('click', () => { const i = QUALITY_ORDER.indexOf(quality); setQuality(QUALITY_ORDER[(i + 1) % QUALITY_ORDER.length], true); pausedDrawn = false; });
 confirmButton('restart', '再按一次確定重新開始', () => {
   msgEl.className = ''; $('#info').style.opacity = 0;
   setPaused(false);
@@ -1908,7 +2140,7 @@ confirmButton('quit', '再按一次回到首頁（這局不計分）', () => {
 document.addEventListener('visibilitychange', () => { if (document.hidden) setPaused(true); });
 
 // ---------------- Loop ----------------
-const camPos = new THREE.Vector3(0, 1.42, 1.7), camLook = new THREE.Vector3(0, 0.15, -18.6);
+const camPos = new THREE.Vector3(0, 1.42, STAND_Z), camLook = new THREE.Vector3(0, AIM_LOOK.y, AIM_LOOK.z);
 const wantPos = new THREE.Vector3(), wantLook = new THREE.Vector3(), held = new THREE.Vector3();
 const spinAxis = new THREE.Vector3(1, 0, 0);
 buildPlayers();
@@ -1992,13 +2224,13 @@ function update(dt) {
     wantPos.copy(camPos); wantLook.copy(camLook);
   } else if (state === 'intro' || state === 'aim') {
     const sway = state === 'intro' ? Math.sin(elapsed * 0.4) * 0.12 : 0;
-    wantPos.set(px + sway, 1.42, 1.7); wantLook.set(px * 0.25 + sway * 0.5, 0.15, -18.6);
+    wantPos.set(px + sway, 1.42, STAND_Z); wantLook.set(px * 0.25 + sway * 0.5, AIM_LOOK.y, AIM_LOOK.z);
   } else if (state === 'over') {
     wantPos.copy(WIDE_VIEW.pos); wantLook.copy(WIDE_VIEW.look);
   } else if (state === 'reset') { // watching the pinsetter
     wantPos.set(0, 0.95, -15.4); wantLook.set(0, 0.3, -18.8);
   } else if (state === 'release') {
-    wantPos.set(px, 1.2, 1.1); wantLook.set(px * 0.25, 0.1, -18.6);
+    wantPos.set(px, 1.2, STAND_Z - 0.6); wantLook.set(px * 0.25, AIM_LOOK.y, AIM_LOOK.z);
   } else {
     const b = ballBody.position;
     const cz = Math.max(b.z + 2.3, -14.6);
@@ -2014,7 +2246,10 @@ function update(dt) {
   const k = 1 - Math.exp(-dt * (state === 'rolling' ? 7 : 4.5));
   camPos.lerp(wantPos, k); camLook.lerp(wantLook, k);
   camera.position.copy(camPos); camera.lookAt(camLook);
-  const fov = 46 - 10 * zoomAmt;
+  const aimWant = state === 'intro' || state === 'aim' || state === 'release' ? 1 : 0;
+  aimAmt += (aimWant - aimAmt) * (1 - Math.exp(-dt * (aimWant ? 4 : 2.2)));
+  // slow motion zooms in by the same share as before (46° → 36°)
+  const fov = (baseFov + (aimFov - baseFov) * aimAmt) * (1 - 0.22 * zoomAmt);
   if (Math.abs(camera.fov - fov) > 0.01) { camera.fov = fov; camera.updateProjectionMatrix(); }
   if (shake > 0.002) {
     shake *= Math.exp(-dt * 6);
@@ -2026,7 +2261,8 @@ function update(dt) {
 
   // ball
   if (state === 'intro' || state === 'aim') {
-    held.set(0.17, -0.27, -0.62); camera.localToWorld(held);
+    // further out when the view is narrower, so the ball stays the same size in the same corner of the screen
+    held.set(0.17, -0.27, -0.62 * heldScale); camera.localToWorld(held);
     ballMesh.position.copy(held); ballMesh.rotateOnAxis(spinAxis, dt * 0.3);
     ballMesh.visible = true; blob.visible = false;
   } else if (state === 'release') {
@@ -2067,11 +2303,25 @@ function update(dt) {
   updateFx(sdt); updateConfetti(sdt); updateLights(sdt); updateTrail(dt);
   fxMat.uniforms.uScale.value = renderer.domElement.height / (2 * Math.tan(THREE.MathUtils.degToRad(camera.fov) / 2));
 }
+// If the player never picked a quality and the game keeps running slow, step down one level (at most to low).
+let aimAmt = 1; // 1 = the narrow aiming view, 0 = the wider view (see VIEW_H / AIM_FOV)
+let perfT = 0, perfFrames = 0, perfSlow = 0, pausedDrawn = false;
+addEventListener('resize', () => { pausedDrawn = false; });
+function watchPerf(raw) {
+  if (!qualityAuto || quality === 'low' || paused || raw > 0.25 || elapsed < 3) return; // skip load-in and hidden tabs
+  perfT += raw; perfFrames++;
+  if (perfT < 2) return;
+  const fps = perfFrames / perfT; perfT = 0; perfFrames = 0;
+  perfSlow = fps < 40 ? perfSlow + 1 : 0;
+  if (perfSlow >= 2) { perfSlow = 0; setQuality(QUALITY_ORDER[QUALITY_ORDER.indexOf(quality) + 1]); }
+}
 function loop() {
   requestAnimationFrame(loop);
-  const dt = Math.min(clock.getDelta(), 0.05);
-  if (!paused) update(dt);
-  renderer.render(scene, camera);
+  const raw = clock.getDelta(), dt = Math.min(raw, 0.05);
+  if (!paused) { update(dt); watchPerf(raw); }
+  if (paused && pausedDrawn) return; // nothing moves under the pause menu: no need to keep drawing it
+  pausedDrawn = paused;
+  if (QUALITY[quality].bloom) renderWithGlow(); else renderer.render(scene, camera);
 }
 loop();
 </script>
