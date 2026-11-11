@@ -165,8 +165,6 @@ body.paused #msg { animation-play-state: paused; }
 #players span b { margin-left: 6px; color: var(--ink); }
 #players span.on { color: var(--ink); border-color: var(--cyan); box-shadow: 0 0 10px rgba(99, 221, 255, 0.35); }
 #players span.on b { color: var(--cyan); }
-#msg.turn .big { font-family: var(--f-body); font-weight: 900; font-size: clamp(34px, 9vw, 64px); color: var(--cyan);
-  text-shadow: 0 0 16px rgba(99, 221, 255, 0.7), 0 2px 18px rgba(0, 0, 0, 0.8); }
 .over-name { margin: -8px 0 -6px; font-size: 18px; font-weight: 700; color: var(--ink); }
 #solo { display: flex; flex-direction: column; gap: 18px; }
 #rank { display: flex; flex-direction: column; gap: 8px; }
@@ -205,6 +203,29 @@ body.paused #msg { animation-play-state: paused; }
 @keyframes shimmer { to { background-position: 300% 0; } }
 body.paused #flash, body.paused #msg .big { animation-play-state: paused; }
 
+/* Transitions: GAME START / GAME OVER titles, the frame / next-player banner, the results fading in */
+#msg.cine .big { font-size: clamp(44px, 12vw, 120px); color: var(--cyan); text-shadow: 0 0 18px rgba(99, 221, 255, 0.85), 0 0 48px rgba(99, 221, 255, 0.4); }
+#msg.cine.end .big { color: var(--neon); text-shadow: 0 0 18px rgba(255, 79, 123, 0.85), 0 0 48px rgba(255, 79, 123, 0.45); }
+#msg.cine.show { animation: pop 2.2s ease-out forwards; }
+#banner { --pc: var(--cyan); position: fixed; left: 0; right: 0; top: 56%; pointer-events: none; overflow: hidden; }
+#banner .band { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 14px max(16px, env(safe-area-inset-left, 0px));
+  transform: translateX(-110%); opacity: 0;
+  background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--pc) 28%, rgba(8, 10, 20, 0.92)) 18%, color-mix(in srgb, var(--pc) 28%, rgba(8, 10, 20, 0.92)) 82%, transparent);
+  border-block: 2px solid var(--pc); box-shadow: 0 0 28px color-mix(in srgb, var(--pc) 45%, transparent); }
+#banner .kick { font-size: 13px; font-weight: 700; letter-spacing: 0.3em; color: var(--pc); }
+#banner .title { font-size: clamp(28px, 7.5vw, 52px); font-weight: 900; color: var(--ink); line-height: 1.15; text-shadow: 0 2px 14px rgba(0, 0, 0, 0.7); max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+#banner .sub { font-size: 14px; font-weight: 500; color: var(--ink); opacity: 0.85; font-variant-numeric: tabular-nums; }
+#banner.go .band { animation: band 2.1s cubic-bezier(0.2, 0.8, 0.2, 1) forwards; }
+@keyframes band {
+  0% { transform: translateX(-110%); opacity: 1; }
+  18% { transform: translateX(0); }
+  80% { transform: translateX(0); opacity: 1; }
+  100% { transform: translateX(110%); opacity: 1; }
+}
+#over:not([hidden]) { animation: fadein 0.6s ease-out; }
+@keyframes fadein { from { opacity: 0; } to { opacity: 1; } }
+body.paused #banner .band { animation-play-state: paused; }
+
 @media (max-width: 520px) {
   .fr .mk { height: 18px; }
   .fr .mk span { font-size: 11px; }
@@ -215,8 +236,10 @@ body.paused #flash, body.paused #msg .big { animation-play-state: paused; }
   #status { font-size: 12px; }
 }
 @media (prefers-reduced-motion: reduce) {
-  #msg.show, #msg.streak.show { animation: fade 1.7s linear forwards; }
+  #msg.show, #msg.streak.show, #msg.cine.show { animation: fade 1.7s linear forwards; }
   #msg.streak .big { animation: none; }
+  #banner.go .band { animation: fadeband 2.1s linear forwards; transform: none; }
+  @keyframes fadeband { 0% { opacity: 0; } 12%, 85% { opacity: 1; } 100% { opacity: 0; } }
   #flash.go { animation-duration: 1.4s; }
   @keyframes fade { 0%, 85% { opacity: 1; } 100% { opacity: 0; } }
 }
@@ -250,6 +273,7 @@ body.paused #flash, body.paused #msg .big { animation-play-state: paused; }
 </div>
 
 <div id="flash"></div>
+<div id="banner" aria-live="polite"><div class="band"><span class="kick"></span><b class="title"></b><span class="sub"></span></div></div>
 <div id="msg"><div class="big"></div><div class="small"></div></div>
 
 <div class="overlay" id="start">
@@ -310,6 +334,7 @@ body.paused #flash, body.paused #msg .big { animation-play-state: paused; }
           <dt>曲球</dt><dd>滑出一道弧線，球會在球道後段轉彎。</dd>
           <dt>站位</dt><dd>用 ← → 鍵或兩側按鈕在犯規線後左右移動。</dd>
           <dt>慢動作</dt><dd>會全倒或補中的那一球，快撞到瓶子時會放慢，撞上去的瞬間恢復全速。</dd>
+          <dt>快轉</dt><dd>置瓶機在整理球瓶、或過場動畫播放時，點一下畫面（或按空白鍵）可以快轉。</dd>
         </dl>
       </details>
     </div>
@@ -346,7 +371,7 @@ const ROW = SP * Math.sin(Math.PI / 3);
 const MAXX = W / 2 - R - 0.02;
 
 // Game version: bump together with CHANGELOG.md and the git tag on every push
-const GAME_VERSION = '1.4.0';
+const GAME_VERSION = '1.5.0';
 document.querySelectorAll('.ver').forEach((el) => { el.textContent = `v${GAME_VERSION}`; });
 
 try { await Promise.race([document.fonts.load('100px Monoton'), new Promise((r) => setTimeout(r, 1500))]); } catch (e) {}
@@ -534,12 +559,13 @@ box(9, 0.018, 0.018, neonAmber, 0, 0.955, -17.84);
 plane(12, 8, new THREE.MeshStandardMaterial({ color: 0x0f1122, roughness: 0.9 }), 0, -0.02, 8.5);
 
 // Lights
-scene.add(new THREE.HemisphereLight(0xc4d3ff, 0x2b1d12, 0.55));
+const hemi = new THREE.HemisphereLight(0xc4d3ff, 0x2b1d12, 0.55); scene.add(hemi);
 const spot = new THREE.SpotLight(0xfff0dc, 38, 9, 0.55, 0.55, 1.4);
 spot.position.set(0, 2.7, -16.6); spot.target.position.set(0, 0, -18.75);
 spot.castShadow = true; spot.shadow.mapSize.set(1024, 1024); spot.shadow.camera.near = 0.5; spot.shadow.camera.far = 6; spot.shadow.normalBias = 0.02;
 scene.add(spot, spot.target);
-[1, -4, -9, -14].forEach((z) => { const p = new THREE.PointLight(0xffe2bd, 7, 0, 2); p.position.set(0, 2.7, z); scene.add(p); });
+// ceiling lights along the lane, from the bowler towards the pins (the transitions switch them one by one)
+const laneLights = [1, -4, -9, -14].map((z) => { const p = new THREE.PointLight(0xffe2bd, 7, 0, 2); p.position.set(0, 2.7, z); scene.add(p); return p; });
 
 // Pins (dynamic meshes, origin at centre of mass)
 const PIN_GEO_DYN = PIN_GEO.clone(); PIN_GEO_DYN.translate(0, -COM, 0);
@@ -734,15 +760,28 @@ function updateTrail(dt) {
 // Light flashes: a coloured point light on the pin deck, a pulse on the deck spotlight, and neon strips that cycle on a turkey
 const fxLight = new THREE.PointLight(0xff4f7b, 0, 7, 1.6); fxLight.position.set(0, 0.7, HEAD_Z + 0.4); scene.add(fxLight);
 let fxLightI = 0, spotBoost = 0, neonParty = 0, shake = 0;
-const SPOT_I = spot.intensity;
+const SPOT_I = spot.intensity, HEMI_I = hemi.intensity, POINT_I = laneLights[0].intensity;
+// House lights, 0..1 each: [4 ceiling lights from the bowler to the pins, pin-deck spotlight, neon + room].
+// lit = where each one is now, litWant = where it is heading (switching on is quick, dimming is slow).
+const lit = [1, 1, 1, 1, 1, 1], litWant = [1, 1, 1, 1, 1, 1];
+const CEIL_COLOR = ceilingLight.color.clone(), PINK = neonPink.color.clone(), AMBER = neonAmber.color.clone();
+function setLights(level, instant) { for (let i = 0; i < lit.length; i++) { litWant[i] = level; if (instant) lit[i] = level; } }
 function updateLights(dt) {
+  for (let i = 0; i < lit.length; i++) lit[i] += (litWant[i] - lit[i]) * (1 - Math.exp(-dt * (litWant[i] > lit[i] ? 18 : 2.2)));
+  laneLights.forEach((p, i) => { p.intensity = POINT_I * lit[i]; });
+  const room = lit[5];
+  hemi.intensity = HEMI_I * (0.2 + 0.8 * room);
+  ceilingLight.color.copy(CEIL_COLOR).multiplyScalar(0.12 + 0.88 * room);
   fxLightI *= Math.exp(-dt * 4); fxLight.intensity = fxLightI;
-  spotBoost *= Math.exp(-dt * 3); spot.intensity = SPOT_I + spotBoost;
+  spotBoost *= Math.exp(-dt * 3); spot.intensity = SPOT_I * lit[4] + spotBoost;
   if (neonParty > 0) {
     neonParty -= dt;
     const k = Math.floor(neonParty * 8) % 3;
     neonPink.color.setHex(neonParty > 0 ? [0xff4f7b, 0x63ddff, 0xffc65c][k] : 0xff4f7b);
     neonAmber.color.setHex(neonParty > 0 ? [0xffc65c, 0xff4f7b, 0x63ddff][k] : 0xffc65c);
+  } else {
+    neonPink.color.copy(PINK).multiplyScalar(0.15 + 0.85 * room);
+    neonAmber.color.copy(AMBER).multiplyScalar(0.15 + 0.85 * room);
   }
 }
 const flashEl = $('#flash');
@@ -864,7 +903,7 @@ function bodyDown(body) {
   const b = body.position;
   return tmpV.y < 0.82 || b.y < COM - 0.06 || Math.abs(b.x) > W / 2 + 0.02 || b.z < LANE_END;
 }
-const isDown = (p) => !p.inWorld || bodyDown(p.body);
+const isDown = (p) => (p.held ? false : !p.inWorld || bodyDown(p.body)); // a pin the pinsetter is holding up is still standing
 // stopped moving (or fell out of the alley, where it just keeps falling)
 const bodyQuiet = (b) => b.position.y < -1 || b.sleepState === CANNON.Body.SLEEPING || (b.velocity.length() < 0.06 && b.angularVelocity.length() < 0.5);
 const standingCount = () => pins.filter((p) => !isDown(p)).length;
@@ -876,14 +915,6 @@ function rackPins() {
     p.body.updateInertiaWorld(true); // else it keeps the last tilt's inertia (and the look-ahead copy would differ)
     p.body.velocity.set(0, 0, 0); p.body.angularVelocity.set(0, 0, 0);
     p.body.sleep(); p.mesh.visible = true; p.fell = false;
-  });
-  updateRack();
-}
-function sweepPins() {
-  pins.forEach((p) => {
-    if (!p.inWorld) return;
-    if (isDown(p)) { world.removeBody(p.body); p.inWorld = false; p.mesh.visible = false; }
-    else { p.body.velocity.set(0, 0, 0); p.body.angularVelocity.set(0, 0, 0); p.body.sleep(); }
   });
   updateRack();
 }
@@ -1164,6 +1195,42 @@ function pitThud(v) {
   if (strikeBuf) playGrain('fall', t + 0.03, { gain: 0.35, rate: 0.85 });
   else knock(t + 0.03, { f: PIN_SOUND.f * 0.7, gain: 0.3 });
 }
+// ---- the pinsetter and the house lights ----
+let humGain = null;
+function machineHum(on) { // motor and chains behind the masking panel
+  if (!ac) return;
+  if (!humGain) {
+    humGain = ac.createGain(); humGain.gain.value = 0; humGain.connect(sfx);
+    const lp = ac.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 260;
+    loopNoise().connect(lp).connect(humGain);
+    const o = ac.createOscillator(), olp = ac.createBiquadFilter(), og = ac.createGain();
+    o.type = 'sawtooth'; o.frequency.value = 48; olp.type = 'lowpass'; olp.frequency.value = 170; og.gain.value = 0.35;
+    o.connect(olp).connect(og).connect(humGain); o.start();
+  }
+  humGain.gain.setTargetAtTime(on ? 0.06 : 0, ac.currentTime, 0.12);
+}
+function clunk(level = 1) { // the bar or the table stopping
+  if (!ac) return; const t = ac.currentTime;
+  boom(t, { from: 140, to: 60, gain: 0.35 * level, d: 0.12 });
+  knock(t, { f: 380, gain: 0.22 * level, d: 0.05, tap: 0.4, jitter: 0.04, tilt: 0.3 });
+}
+function pinsDown(n) { // pins set onto the deck
+  if (!ac || !n) return; const t = ac.currentTime;
+  for (let i = 0; i < n; i++) {
+    const tt = t + Math.random() * 0.05;
+    if (strikeBuf) playGrain('fall', tt, { gain: 0.22, pan: (Math.random() - 0.5) * 0.6, rate: 1.05 });
+    else knock(tt, { f: pinPitch(), gain: 0.18 });
+  }
+}
+function relay() { // a bank of lights switching on
+  if (!ac) return; const t = ac.currentTime;
+  noiseHit(t, { type: 'highpass', freq: 2500, q: 0.7, gain: 0.35, d: 0.015 });
+  boom(t, { from: 120, to: 60, gain: 0.3, d: 0.15 });
+}
+function powerDown() {
+  if (!ac) return;
+  tone(ac.currentTime + 0.1, { freq: 170, to: 38, gain: 0.3, a: 0.05, d: 1.3 });
+}
 // the ball landing on the lane at release
 function thunk() {
   if (!ac) return;
@@ -1383,19 +1450,213 @@ function showInfo(text) {
 }
 function flashHint() { const h = $('#hint'); h.classList.add('flash'); setTimeout(() => h.classList.remove('flash'), 900); }
 
+// ---------------- Pinsetter ----------------
+// Works like the machine behind a real lane: the sweep bar drops in front of the pins and pushes the fallen
+// ones into the pit (it is a moving physics body, so the pins really get shoved and tumble); the setting table
+// comes down to lift the standing pins out of its way after a first ball, or to set a fresh rack of ten.
+const DECK_Z = HEAD_Z - 1.5 * ROW;                        // middle of the rack
+const RAKE_Z = { FRONT: HEAD_Z + 0.32, BACK: LANE_END - 0.4 };
+const RAKE_Y = { UP: 1.2, DOWN: 0.075 };                  // bar centre; UP is hidden behind the masking panel
+const TABLE_Y = { UP: 1.55, SET: 0.415, LIFT: 0.735 };    // table centre: home / pins standing on the deck / pins lifted
+const HANG = 0.415 - COM;                                 // table centre → a hanging pin's centre of mass
+const machineMat = new THREE.MeshStandardMaterial({ color: 0x2a2e3c, metalness: 0.75, roughness: 0.35 });
+const rake = new THREE.Group();
+{
+  const bar = new THREE.Mesh(new THREE.BoxGeometry(1.08, 0.12, 0.05), machineMat); bar.castShadow = true; rake.add(bar);
+  const strip = new THREE.Mesh(new THREE.BoxGeometry(1.06, 0.014, 0.004), neonAmber); strip.position.set(0, 0.035, 0.027); rake.add(strip);
+  for (const s of [-1, 1]) { const arm = new THREE.Mesh(new THREE.BoxGeometry(0.03, 1.1, 0.03), machineMat); arm.position.set(s * 0.52, 0.6, 0); rake.add(arm); }
+}
+rake.position.set(0, RAKE_Y.UP, RAKE_Z.FRONT); scene.add(rake);
+const table = new THREE.Group();
+{
+  const plate = new THREE.Mesh(new THREE.BoxGeometry(1.0, 0.05, 1.05), machineMat); plate.castShadow = true; table.add(plate);
+  const edge = new THREE.Mesh(new THREE.BoxGeometry(1.0, 0.012, 0.004), neonPink); edge.position.set(0, 0, 0.527); table.add(edge);
+  const cupGeo = new THREE.CylinderGeometry(0.045, 0.06, 0.03, 16); // a cup over each pin spot
+  pinSpots.forEach((s) => { const cup = new THREE.Mesh(cupGeo, machineMat); cup.position.set(s.x, -0.04, s.z - DECK_Z); table.add(cup); });
+}
+table.position.set(0, TABLE_Y.UP, DECK_Z); scene.add(table);
+const rakeBody = new CANNON.Body({ mass: 0, type: CANNON.Body.KINEMATIC, material: mLane, shape: new CANNON.Box(new CANNON.Vec3(0.54, 0.06, 0.025)) });
+rakeBody.allowSleep = false;
+
+// Each plan: tracks of [start, end, from, to] for the table height, bar height and bar depth, plus timed events.
+const PLANS = {
+  // after a first ball: lift the standing pins, sweep the fallen ones away, set the standing ones back down
+  respot: {
+    table: [[0, 0.45, 'UP', 'SET'], [0.45, 0.9, 'SET', 'LIFT'], [2.15, 2.6, 'LIFT', 'SET'], [2.6, 3.05, 'SET', 'UP']],
+    rakeY: [[0, 0.35, 'UP', 'DOWN'], [2.8, 3.15, 'DOWN', 'UP']],
+    rakeZ: [[0.9, 1.6, 'FRONT', 'BACK'], [1.75, 2.15, 'BACK', 'FRONT']],
+    events: [[0, 'rakeOn'], [0.35, 'clunk'], [0.45, 'grab'], [2.15, 'clear'], [2.6, 'release'], [3.15, 'rakeOff']], end: 3.15,
+  },
+  // end of a frame (or a cleared rack in the 10th): sweep everything, then set a fresh rack
+  rerack: {
+    table: [[1.6, 2.15, 'UP', 'SET'], [2.15, 2.6, 'SET', 'UP']],
+    rakeY: [[0, 0.35, 'UP', 'DOWN'], [2.35, 2.7, 'DOWN', 'UP']],
+    rakeZ: [[0.35, 1.05, 'FRONT', 'BACK'], [1.2, 1.6, 'BACK', 'FRONT']],
+    events: [[0, 'rakeOn'], [0.35, 'clunk'], [1.6, 'clear'], [1.6, 'hang'], [2.15, 'place'], [2.7, 'rakeOff']], end: 2.7,
+  },
+  // start of a game: the deck is empty, just set a rack
+  fill: {
+    table: [[0, 0.6, 'UP', 'SET'], [0.6, 1.1, 'SET', 'UP']],
+    events: [[0, 'hang'], [0.6, 'place']], end: 1.1,
+  },
+};
+const ease = (u) => u * u * (3 - 2 * u);
+function track(segs, t, values) {
+  if (!segs) return null;
+  let v = values[segs[0][2]];
+  for (const [a, b, from, to] of segs) { if (t < a) break; v = t >= b ? values[to] : values[from] + (values[to] - values[from]) * ease((t - a) / (b - a)); }
+  return v;
+}
+let setter = null; // { plan, t, fired, onDone, cardAt, onCard }
+const _held = new THREE.Quaternion(), _up = new THREE.Quaternion();
+function runPinsetter(kind, onDone, cardAt = null, onCard = null) {
+  setter = { plan: PLANS[kind], t: 0, fired: 0, onDone, cardAt, onCard };
+  machineHum(true);
+}
+function setterEvent(name) {
+  if (name === 'rakeOn') { rakeBody.position.set(0, RAKE_Y.UP, RAKE_Z.FRONT); rakeBody.velocity.setZero(); world.addBody(rakeBody); }
+  else if (name === 'rakeOff') { world.removeBody(rakeBody); clunk(0.7); }
+  else if (name === 'clunk') clunk(1);
+  else if (name === 'grab') { // the table closes on every pin still standing and takes it up
+    clunk(0.6);
+    pins.forEach((p) => {
+      if (!p.inWorld || bodyDown(p.body)) return;
+      const b = p.body.position, q = p.body.quaternion;
+      p.held = { x: b.x, z: b.z, q: new THREE.Quaternion(q.x, q.y, q.z, q.w) };
+      world.removeBody(p.body); p.inWorld = false;
+    });
+  } else if (name === 'clear') { // whatever the bar did not get into the pit (gutters, stragglers) goes too
+    pins.forEach((p) => { if (p.held) return; if (p.inWorld) world.removeBody(p.body); p.inWorld = false; p.mesh.visible = false; });
+  } else if (name === 'hang') { // ten fresh pins in the table
+    pins.forEach((p) => { p.hang = true; p.mesh.visible = true; p.mesh.quaternion.identity(); });
+  } else if (name === 'place') { pins.forEach((p) => { p.hang = false; }); rackPins(); pinsDown(10); }
+  else if (name === 'release') { // standing pins back on the deck where they were, upright
+    let n = 0;
+    pins.forEach((p) => {
+      if (!p.held) return;
+      const h = p.held; p.held = null; n++;
+      p.body.position.set(h.x, COM, h.z); p.body.quaternion.set(0, 0, 0, 1); p.body.updateInertiaWorld(true);
+      p.body.velocity.setZero(); p.body.angularVelocity.setZero();
+      world.addBody(p.body); p.inWorld = true; p.body.sleep(); p.fell = false;
+      p.mesh.position.copy(p.body.position); p.mesh.quaternion.identity();
+    });
+    updateRack(); pinsDown(n);
+  }
+}
+// before the physics step: move the machine to where the plan says, and give the bar the velocity to get there
+function updatePinsetter(dt) {
+  const S = setter; if (!S) return;
+  S.t += dt;
+  const P = S.plan;
+  while (S.fired < P.events.length && P.events[S.fired][0] <= S.t) setterEvent(P.events[S.fired++][1]);
+  if (S.cardAt !== null && S.t >= S.cardAt) { S.cardAt = null; S.onCard?.(); }
+  const ty = track(P.table, S.t, TABLE_Y);
+  if (ty !== null) table.position.y = ty;
+  const ry = track(P.rakeY, S.t, RAKE_Y), rz = track(P.rakeZ, S.t, RAKE_Z) ?? RAKE_Z.FRONT;
+  if (ry !== null && world.bodies.includes(rakeBody) && dt > 0) {
+    const b = rakeBody.position;
+    rakeBody.velocity.set(0, (ry - b.y) / dt, (rz - b.z) / dt);
+  }
+  // pins riding in the table
+  const lift = P.table ? clamp((S.t - 0.45) / 0.45, 0, 1) : 1;
+  pins.forEach((p) => {
+    if (p.held) {
+      p.mesh.position.set(p.held.x, table.position.y - HANG, p.held.z);
+      p.mesh.quaternion.copy(_held.copy(p.held.q).slerp(_up, ease(lift))); // straighten up as it is lifted
+    } else if (p.hang) p.mesh.position.set(p.s.x, table.position.y - HANG, p.s.z);
+  });
+  if (S.t >= P.end) {
+    while (S.fired < P.events.length) setterEvent(P.events[S.fired++][1]);
+    setter = null; machineHum(false); table.position.y = TABLE_Y.UP;
+    S.onDone?.();
+  }
+}
+// after the physics step: the bar's mesh follows its body
+function syncRake() {
+  if (world.bodies.includes(rakeBody)) rake.position.set(0, rakeBody.position.y, rakeBody.position.z);
+  else rake.position.set(0, RAKE_Y.UP, RAKE_Z.FRONT);
+}
+function stopMachines() { // restart / quit in the middle of a cycle
+  if (world.bodies.includes(rakeBody)) world.removeBody(rakeBody);
+  setter = null; machineHum(false); table.position.y = TABLE_Y.UP; syncRake();
+  pins.forEach((p) => { p.held = null; p.hang = false; });
+}
+function clearPins() {
+  pins.forEach((p) => { if (p.inWorld) world.removeBody(p.body); p.inWorld = false; p.mesh.visible = false; p.held = null; p.hang = false; });
+  updateRack();
+}
+
+// ---------------- Transitions ----------------
+// Banner for a new frame / the next player, sliding across the middle of the screen
+const PLAYER_COLORS = ['#63ddff', '#ff4f7b', '#ffc65c', '#b86bff'];
+const bannerEl = $('#banner');
+function showBanner(kick, title, sub, color) {
+  bannerEl.querySelector('.kick').textContent = kick; bannerEl.querySelector('.title').textContent = title; bannerEl.querySelector('.sub').textContent = sub;
+  bannerEl.style.setProperty('--pc', color);
+  bannerEl.classList.remove('go'); void bannerEl.offsetWidth; bannerEl.classList.add('go');
+}
+// what comes up as the lane is handed on: newFrame = everyone finished a frame and a new one starts
+function turnCard(newFrame) {
+  const multi = players.length > 1, n = frame + 1, score = `目前 ${totals().run} 分`;
+  const kick = n === 10 ? '最後一格' : `第 ${n} 格`;
+  if (multi) showBanner(newFrame ? kick : '換人', `輪到 ${players[cur].name}`, score, PLAYER_COLORS[cur]);
+  else if (newFrame) showBanner(n === 10 ? 'FINAL FRAME' : 'NEXT FRAME', `第 ${n} 格`, score, PLAYER_COLORS[0]);
+}
+
+// Cinematics for the start and the end of a game. While one runs, state is 'cine'.
+const DECK_VIEW = { pos: new THREE.Vector3(0, 0.95, -15.2), look: new THREE.Vector3(0, 0.22, -18.8) };
+const WIDE_VIEW = { pos: new THREE.Vector3(0, 3.0, 3.4), look: new THREE.Vector3(0, 0.25, -17) };
+let cine = null, ffwd = false;
+function startCine(kind) {
+  state = 'cine'; cine = { kind, t: 0, fired: 0, fromPos: camPos.clone(), fromLook: camLook.clone() };
+  if (kind === 'start') { setLights(0, true); camPos.copy(DECK_VIEW.pos); camLook.copy(DECK_VIEW.look); }
+}
+const CINE = {
+  // lights come on one by one from the bowler to the pins, the machine sets the rack, the camera flies back
+  start: { end: 3.4, events: [[0.15, () => lightOn(0)], [0.35, () => lightOn(1)], [0.55, () => lightOn(2)], [0.75, () => lightOn(3)],
+    [0.95, () => { lightOn(4); litWant[5] = 1; }], [1.0, () => runPinsetter('fill')],
+    [1.3, () => showMsg('GAME START', players.length > 1 ? `${players.length} 位玩家` : '第 1 格', 'cine')]] },
+  // the house lights dim from the pins back to the bowler while the camera rises, then the results
+  end: { end: 2.5, events: [[0.2, () => { showMsg('GAME OVER', '比賽結束', 'cine end'); powerDown(); }],
+    [0.4, () => { litWant[4] = 0.25; }], [0.7, () => { litWant[3] = 0.25; }], [0.9, () => { litWant[2] = 0.25; }],
+    [1.1, () => { litWant[1] = 0.3; litWant[5] = 0.35; }], [1.3, () => { litWant[0] = 0.35; }]] },
+};
+function lightOn(i) { litWant[i] = 1; relay(); }
+function updateCine(dt) {
+  const C = cine; if (!C) return;
+  C.t += dt;
+  const plan = CINE[C.kind];
+  while (C.fired < plan.events.length && plan.events[C.fired][0] <= C.t) plan.events[C.fired++][1]();
+  if (C.kind === 'start') {
+    const u = ease(clamp((C.t - 2.2) / 1.2, 0, 1));
+    camPos.lerpVectors(DECK_VIEW.pos, wantPos.set(px, 1.42, 1.7), u); camLook.lerpVectors(DECK_VIEW.look, wantLook.set(px * 0.25, 0.15, -18.6), u);
+  } else {
+    const u = ease(clamp(C.t / 2.2, 0, 1));
+    camPos.lerpVectors(C.fromPos, WIDE_VIEW.pos, u); camLook.lerpVectors(C.fromLook, WIDE_VIEW.look, u);
+  }
+  if (C.t >= plan.end && !setter) {
+    while (C.fired < plan.events.length) plan.events[C.fired++][1]();
+    cine = null; ffwd = false;
+    if (C.kind === 'start') { toAim(); if (players.length > 1) turnCard(true); }
+    else gameOver();
+  }
+}
+function toAim() { state = 'aim'; ffwd = false; renderBoard(); }
+
 // ---------------- Game flow ----------------
 let pxRaw = 0, holdT = 0, shownBoard = 0, stepQueue = 0;
 const keyDir = (k) => (k === 'ArrowLeft' || k === 'a' || k === 'A' ? -1 : k === 'ArrowRight' || k === 'd' || k === 'D' ? 1 : 0);
 let state = 'intro', px = 0, shot = null, tState = 0, settleT = null, resultT = 0, gutterFlag = false, pending = null;
 const relFrom = new THREE.Vector3(), relTo = new THREE.Vector3();
 let best = 0; try { best = +localStorage.getItem('lane7-best') || 0; } catch (e) {}
+// a new game opens with the start cinematic: an empty dark lane, lights on, the machine sets the first rack
 function newGame() {
+  stopMachines(); cine = null;
   buildPlayers();
   if (ballInWorld) { world.removeBody(ballBody); ballInWorld = false; }
-  rackPins(); state = 'aim'; renderBoard();
-  if (players.length > 1) announceTurn();
+  clearPins();
+  startCine('start'); renderBoard();
 }
-function announceTurn() { showMsg(`輪到 ${players[cur].name}`, `第 ${frame + 1} 格`, 'turn'); }
 
 function analyze(pts) {
   const a = pts[0], e = pts[pts.length - 1];
@@ -1416,7 +1677,9 @@ function analyze(pts) {
 
 let drag = null;
 canvas.addEventListener('pointerdown', (e) => {
-  if (state !== 'aim' || paused) return;
+  if (paused) return;
+  if (state === 'reset' || state === 'cine') { ffwd = true; return; } // tap to fast-forward the machine / transition
+  if (state !== 'aim') return;
   initAudio();
   try { canvas.setPointerCapture(e.pointerId); } catch (err) {}
   drag = { pts: [{ x: e.clientX, y: e.clientY, t: performance.now() }] };
@@ -1447,6 +1710,7 @@ addEventListener('keydown', (e) => {
   if (e.target instanceof HTMLInputElement) return; // typing a player name
   if (e.key === 'Escape' || e.key === 'p' || e.key === 'P') { if (!e.repeat) setPaused(!paused); return; }
   if (paused) return;
+  if ((e.key === ' ' || e.key === 'Enter') && (state === 'reset' || state === 'cine')) { ffwd = true; e.preventDefault(); return; }
   keys[e.key] = true;
   if (!e.repeat && state === 'aim') stepQueue += keyDir(e.key);
 });
@@ -1504,7 +1768,8 @@ function evaluate() {
     showMsg(gutterFlag ? '洗溝' : '沒打到', gutterFlag ? '球掉進溝裡了' : '0 瓶', 'plain'); aww();
   } else showMsg(`${knocked} 瓶`, now > 0 ? `還剩 ${now} 瓶` : '', 'plain');
   updateRack();
-  pending = { nextFrame, resetRack, over, wait: label === 'STRIKE' ? 2.7 : label === 'SPARE' ? 2.2 : 1.9 };
+  // a short look at the result, then the pinsetter takes over (strikes/spares get a bit longer for the celebration)
+  pending = { nextFrame, resetRack, over, wait: label === 'STRIKE' ? 2.2 : label === 'SPARE' ? 1.8 : 1.1 };
   state = 'result'; resultT = 0;
 }
 
@@ -1516,13 +1781,18 @@ function afterResult() {
     // this player's frame is done: pass the lane to the next player, or move everyone to the next frame
     players[cur].px = px;
     const last = cur === players.length - 1;
-    if (over && last) { gameOver(); return; }
+    if (over && last) { startCine('end'); return; }
     if (last) frame++;
     usePlayer(last ? 0 : cur + 1);
-    ballNo = 0; rackPins();
-    if (players.length > 1) announceTurn();
-  } else { ballNo++; if (resetRack) rackPins(); else sweepPins(); }
-  state = 'aim'; renderBoard();
+    ballNo = 0;
+    state = 'reset'; renderBoard();
+    // fresh rack; the frame / next-player banner comes up as the table sets the pins
+    runPinsetter('rerack', toAim, PLANS.rerack.end - 1.0, () => turnCard(last));
+  } else {
+    ballNo++;
+    state = 'reset'; renderBoard();
+    runPinsetter(resetRack ? 'rerack' : 'respot', toAim);
+  }
 }
 
 function gameOver() {
@@ -1618,7 +1888,8 @@ function setPaused(p) {
 }
 $('#pausebtn').addEventListener('click', () => setPaused(true));
 $('#resume').addEventListener('click', () => setPaused(false));
-$('#sound').addEventListener('click', () => setMuted(!muted));confirmButton('restart', '再按一次確定重新開始', () => {
+$('#sound').addEventListener('click', () => setMuted(!muted));
+confirmButton('restart', '再按一次確定重新開始', () => {
   msgEl.className = ''; $('#info').style.opacity = 0;
   setPaused(false);
   newGame();
@@ -1628,9 +1899,10 @@ confirmButton('quit', '再按一次回到首頁（這局不計分）', () => {
   setPaused(false);
   if (ballInWorld) { world.removeBody(ballBody); ballInWorld = false; }
   blob.visible = false; guide.visible = false;
+  stopMachines(); cine = null; ffwd = false;
   buildPlayers();
   state = 'intro';
-  rackPins(); renderBoard();
+  rackPins(); renderBoard(); setLights(1, true);
   $('#start').hidden = false; $('#go').focus();
 });
 document.addEventListener('visibilitychange', () => { if (document.hidden) setPaused(true); });
@@ -1668,8 +1940,11 @@ function update(dt) {
   const zoomWant = slowArmed && (state === 'rolling' || state === 'result') &&
     ballBody.position.z - HEAD_Z < SLOW_IN[0] && (hitT === null || simClock - hitT < 1.1) ? 1 : 0;
   zoomAmt += (zoomWant - zoomAmt) * (1 - Math.exp(-dt * (zoomWant ? 5 : 2.5)));
-  const sdt = dt * (1 - 0.75 * slowAmt); // simulation time step
+  const fast = ffwd && (state === 'reset' || state === 'cine') ? 3 : 1; // tapped to fast-forward
+  const sdt = dt * (1 - 0.75 * slowAmt) * fast; // simulation time step
   simClock += sdt;
+  updateCine(dt * fast);
+  updatePinsetter(sdt);
   if (state === 'aim') {
     const d = moveDir || ((keys.ArrowLeft || keys.a || keys.A) ? -1 : 0) + ((keys.ArrowRight || keys.d || keys.D) ? 1 : 0);
     // a tap moves exactly one board; holding slides after a short delay
@@ -1698,11 +1973,12 @@ function update(dt) {
   physAcc += sdt;
   for (let n = 0; physAcc >= PRED_STEP && n < 16; n++) { world.step(PRED_STEP); physAcc -= PRED_STEP; }
   physAcc = Math.min(physAcc, PRED_STEP);
+  syncRake();
 
   pins.forEach((p) => {
     if (!p.inWorld) return;
     // a pin that fell out of the alley: only hide it. Removing a body mid-shot reorders the world and the
-    // look-ahead copy would no longer match; sweepPins/rackPins take it out between balls.
+    // look-ahead copy would no longer match; the pinsetter takes it out between balls.
     if (p.body.position.y < -2) { p.mesh.visible = false; return; }
     p.mesh.position.copy(p.body.position); p.mesh.quaternion.copy(p.body.quaternion);
     if (!p.fell && p.body.position.y < 0.12) { // toppled onto the deck
@@ -1711,10 +1987,16 @@ function update(dt) {
     }
   });
 
-  // camera targets
-  if (state === 'intro' || state === 'aim' || state === 'over') {
+  // camera targets (a cinematic drives camPos/camLook itself)
+  if (state === 'cine') {
+    wantPos.copy(camPos); wantLook.copy(camLook);
+  } else if (state === 'intro' || state === 'aim') {
     const sway = state === 'intro' ? Math.sin(elapsed * 0.4) * 0.12 : 0;
     wantPos.set(px + sway, 1.42, 1.7); wantLook.set(px * 0.25 + sway * 0.5, 0.15, -18.6);
+  } else if (state === 'over') {
+    wantPos.copy(WIDE_VIEW.pos); wantLook.copy(WIDE_VIEW.look);
+  } else if (state === 'reset') { // watching the pinsetter
+    wantPos.set(0, 0.95, -15.4); wantLook.set(0, 0.3, -18.8);
   } else if (state === 'release') {
     wantPos.set(px, 1.2, 1.1); wantLook.set(px * 0.25, 0.1, -18.6);
   } else {
@@ -1752,6 +2034,8 @@ function update(dt) {
     ballMesh.position.lerpVectors(relFrom, relTo, u * u);
     blob.visible = true; blob.position.set(ballMesh.position.x, 0.002, ballMesh.position.z); blob.material.opacity = u;
     if (u >= 1) launch();
+  } else if (state === 'reset' || state === 'cine' || state === 'over') {
+    ballMesh.visible = false; blob.visible = false; // the ball is on its way back to the bowler
   } else if (ballInWorld) {
     ballMesh.position.copy(ballBody.position); ballMesh.quaternion.copy(ballBody.quaternion);
     const b = ballBody.position, onDeck = b.z > LANE_END;

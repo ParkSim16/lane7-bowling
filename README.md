@@ -65,6 +65,8 @@ node -e "const h=require('http'),f=require('fs');h.createServer((q,s)=>{f.readFi
 - 音效（Web Audio，除了撞瓶錄音都是即時合成）：`initAudio()`、`setRolling()`（滾球）、`crash()`／`playRecording()`（撞瓶錄音）、`playGrain()`（從錄音切出的單支球瓶聲）、`cheer()`／`aww()`（觀眾）、`fanfare()`（慶祝音樂）
 - 特效：`emit()`（火花粒子）、`confettiBurst()`（彩帶）、`updateTrail()`（球的軌跡）、`celebrate()`（全倒／補中慶祝）、`update()` 裡的慢動作與鏡頭震動
 - 慢動作預判：`predictShot()` 在出手時複製整個物理世界，`runPrediction()` 每幀在背景算幾毫秒，提早知道這球會不會全倒／補中。物理用固定 1/240 秒步長，複本才會和實際結果一模一樣；所有剛體都由 `makeWorld()`、`makeBall()`、`makePin()`、`staticBox()` 建立，改物理設定時要讓複本也用同一套
+- 置瓶機：`PLANS`（每種循環的時間表：`respot` 第一球後夾起站著的瓶、`rerack` 一格結束換新瓶、`fill` 開局放瓶）、`runPinsetter()`、`updatePinsetter()`；擋板 `rakeBody` 是運動學剛體，只在運作時加進物理世界
+- 過場：`CINE`（開局／結束的時間表）、`startCine()`、`updateCine()`、`turnCard()`（換格／換人橫幅）、`setLights()`（燈光亮度）
 
 ## 音效來源
 
