@@ -200,7 +200,7 @@ body.paused #msg { animation-play-state: paused; }
       <dt>暫停</dt><dd>按左上角的暫停鈕，或按 Esc／P。</dd>
     </dl>
     <button class="cta" id="go">開始打球</button>
-    <div id="loading">標準十格計分 · 60 呎球道</div>
+    <div id="loading"><span class="ver"></span> · 標準十格計分 · 60 呎球道</div>
   </div>
 </div>
 
@@ -236,7 +236,7 @@ body.paused #msg { animation-play-state: paused; }
         </dl>
       </details>
     </div>
-    <p class="keyhint">按 Esc 或 P 也能暫停／繼續</p>
+    <p class="keyhint">按 Esc 或 P 也能暫停／繼續 · <span class="ver"></span></p>
   </div>
 </div>
 
@@ -265,6 +265,10 @@ const LANE_END = -19.25;  // end of pin deck
 const SP = 0.3048;        // 12" pin spacing
 const ROW = SP * Math.sin(Math.PI / 3);
 const MAXX = W / 2 - R - 0.02;
+
+// Game version: bump together with CHANGELOG.md and the git tag on every push
+const GAME_VERSION = '1.1.0';
+document.querySelectorAll('.ver').forEach((el) => { el.textContent = `v${GAME_VERSION}`; });
 
 try { await Promise.race([document.fonts.load('100px Monoton'), new Promise((r) => setTimeout(r, 1500))]); } catch (e) {}
 
