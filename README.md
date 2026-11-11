@@ -62,9 +62,16 @@ node -e "const h=require('http'),f=require('fs');h.createServer((q,s)=>{f.readFi
 - 滑動判定：`analyze()` 把滑動軌跡換算成球速、角度、旋轉
 - 計分：`marksFor()`、`totals()`、`evaluate()`
 - 多人輪流：`buildPlayers()`、`usePlayer()`、`afterResult()`（換人／換格）、`gameOver()`（排行）
+- 音效（Web Audio，除了撞瓶錄音都是即時合成）：`initAudio()`、`setRolling()`（滾球）、`crash()`／`playRecording()`（撞瓶錄音）、`playGrain()`（從錄音切出的單支球瓶聲）、`cheer()`／`aww()`（觀眾）、`fanfare()`（慶祝音樂）
+- 特效：`emit()`（火花粒子）、`confettiBurst()`（彩帶）、`updateTrail()`（球的軌跡）、`celebrate()`（全倒／補中慶祝）、`update()` 裡的慢動作與鏡頭震動
+
+## 音效來源
+
+撞瓶錄音是 freesound 社群的「bowling strike」（#40456），以 base64 嵌在 `bowling.html` 的 `<script id="strike-mp3">` 裡，讓遊戲維持單一檔案。
 
 ## 可以優化的方向
 
 - 撞瓶效果（目前正中頭瓶多半只倒 5–6 瓶，打進 1-3 號瓶縫才容易全倒）
 - 滑動手感（球速與旋轉的換算比例）
-- 球的重量選擇、音效與特效
+- 球的重量選擇
+- 球撞頭瓶後常會彈到半空中（慢動作特寫時特別明顯）
