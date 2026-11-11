@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "bowling",
+      "runtimeExecutable": "node",
+      "runtimeArgs": ["-e", "const h=require('http'),f=require('fs');h.createServer((q,s)=>{f.readFile('bowling.html',(e,d)=>{s.writeHead(200,{'Content-Type':'text/html; charset=utf-8'});s.end('<!doctype html><html><head><meta charset=utf-8><meta name=viewport content=\"width=device-width,initial-scale=1,viewport-fit=cover\"></head><body>'+d+'</body></html>')})}).listen(5317)"],
+      "port": 5317
+    }
+  ]
+}

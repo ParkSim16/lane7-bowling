@@ -1,0 +1,828 @@
+<title>Lane 7 保齡球</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Monoton&family=Noto+Sans+TC:wght@400;500;700;900&display=swap">
+<style>
+/* Layout: full-bleed 3D alley; scoresheet pinned top, controls pinned bottom, overlays centered. Single dark "alley at night" look by design. */
+:root {
+  color-scheme: dark;
+  --bg: #080a14;
+  --panel: rgba(13, 16, 32, 0.8);
+  --line: rgba(220, 225, 255, 0.13);
+  --ink: #f5f0e6;
+  --muted: #959bb6;
+  --neon: #ff4f7b;
+  --amber: #ffc65c;
+  --cyan: #63ddff;
+  --f-display: "Monoton", "Noto Sans TC", system-ui, sans-serif;
+  --f-body: "Noto Sans TC", "PingFang TC", "Microsoft JhengHei", system-ui, sans-serif;
+}
+[hidden] { display: none !important; }
+html, body { height: 100%; }
+body {
+  background: var(--bg); color: var(--ink); font-family: var(--f-body);
+  overflow: hidden; overscroll-behavior: none; -webkit-user-select: none; user-select: none;
+}
+#c { position: fixed; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; cursor: grab; }
+#c:active { cursor: grabbing; }
+
+#hud {
+  position: fixed; inset: 0; pointer-events: none; display: flex; flex-direction: column; justify-content: space-between;
+  padding-top: calc(env(safe-area-inset-top, 0px) + 10px);
+  padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 14px);
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+}
+#top { display: flex; flex-direction: column; gap: 8px; width: min(780px, 100%); margin: 0 auto; }
+#board {
+  display: grid; grid-template-columns: repeat(9, minmax(0, 1fr)) minmax(0, 1.5fr) minmax(0, 1.25fr);
+  background: var(--panel); border: 1px solid var(--line); border-radius: 8px; overflow: hidden;
+  backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
+  font-variant-numeric: tabular-nums;
+}
+.fr { display: flex; flex-direction: column; border-right: 1px solid var(--line); min-width: 0; }
+.fr:last-child { border-right: 0; }
+.fr .no { font-size: 10px; color: var(--muted); text-align: center; padding: 2px 0; border-bottom: 1px solid var(--line); letter-spacing: 0.08em; }
+.fr .mk { display: flex; height: 21px; }
+.fr .mk span { flex: 1; display: grid; place-items: center; font-weight: 700; font-size: 13px; min-width: 0; }
+.fr .mk span + span { border-left: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+.fr .mk .x { color: var(--neon); }
+.fr .mk .sp { color: var(--amber); }
+.fr .tt { height: 24px; display: grid; place-items: center; font-size: 15px; font-weight: 700; }
+.fr.cur { background: rgba(255, 79, 123, 0.14); }
+.fr.cur .no { color: var(--neon); }
+.fr.total .tv { flex: 1; display: grid; place-items: center; font-size: 22px; font-weight: 900; color: var(--amber); }
+
+#meta { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+#brand { font-family: var(--f-display); font-size: 20px; color: var(--neon); text-shadow: 0 0 10px rgba(255, 79, 123, 0.7); letter-spacing: 0.04em; }
+#status { font-size: 13px; color: var(--ink); background: var(--panel); border: 1px solid var(--line); border-radius: 999px; padding: 4px 12px; font-weight: 500; }
+#rack { display: grid; gap: 3px; justify-items: center; background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 6px 9px; }
+#rack .row { display: flex; gap: 5px; }
+#rack i { width: 8px; height: 8px; border-radius: 50%; background: var(--ink); box-shadow: 0 0 6px rgba(255, 255, 255, 0.5); }
+#rack i.down { background: transparent; box-shadow: inset 0 0 0 1px rgba(220, 225, 255, 0.3); }
+
+#bottom { display: flex; flex-direction: column; align-items: center; gap: 10px; }
+#info { min-height: 20px; font-size: 14px; color: var(--cyan); font-weight: 700; text-shadow: 0 1px 8px rgba(0, 0, 0, 0.9); font-variant-numeric: tabular-nums; transition: opacity 0.4s; }
+#controls { display: flex; align-items: center; gap: 12px; width: min(560px, 100%); }
+#hint { flex: 1; text-align: center; font-size: 12.5px; line-height: 1.5; color: #c9cde0; text-wrap: balance; transition: color 0.2s;
+  background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 6px 10px; backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); }
+#hint.flash { color: var(--amber); }
+#hint b { color: var(--ink); font-weight: 700; }
+.btn {
+  pointer-events: auto; width: 52px; height: 52px; flex: 0 0 auto; border-radius: 50%;
+  border: 1px solid var(--line); background: var(--panel); color: var(--ink);
+  display: grid; place-items: center; cursor: pointer; touch-action: none;
+  backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
+}
+.btn:active { background: rgba(255, 79, 123, 0.25); }
+.btn:focus-visible, .cta:focus-visible { outline: 2px solid var(--amber); outline-offset: 3px; }
+.btn svg { width: 22px; height: 22px; }
+#mute { width: 40px; height: 40px; }
+#mute svg { width: 18px; height: 18px; }
+
+#msg {
+  position: fixed; left: 0; right: 0; top: 34%; text-align: center; pointer-events: none;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+  opacity: 0;
+}
+#msg .big { font-family: var(--f-display); font-size: clamp(46px, 13vw, 128px); line-height: 1; color: var(--neon);
+  text-shadow: 0 0 18px rgba(255, 79, 123, 0.85), 0 0 48px rgba(255, 79, 123, 0.45); }
+#msg.spare .big { color: var(--amber); text-shadow: 0 0 18px rgba(255, 198, 92, 0.85), 0 0 48px rgba(255, 198, 92, 0.4); }
+#msg.plain .big { font-family: var(--f-body); font-weight: 900; color: var(--ink); font-size: clamp(36px, 9vw, 72px); text-shadow: 0 2px 18px rgba(0, 0, 0, 0.8); }
+#msg .small { margin-top: 10px; font-size: clamp(15px, 3.6vw, 20px); font-weight: 700; color: var(--ink); text-shadow: 0 2px 10px rgba(0, 0, 0, 0.9); }
+#msg.show { animation: pop 1.7s ease-out forwards; }
+@keyframes pop {
+  0% { opacity: 0; transform: scale(0.7); }
+  12% { opacity: 1; transform: scale(1.06); }
+  22% { transform: scale(1); }
+  80% { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+.overlay {
+  position: fixed; inset: 0; display: grid; place-items: center; background: rgba(5, 6, 14, 0.72);
+  backdrop-filter: blur(5px); -webkit-backdrop-filter: blur(5px);
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: calc(env(safe-area-inset-top, 0px) + 16px) calc(env(safe-area-inset-bottom, 0px) + 16px);
+}
+.card { width: min(440px, 100%); display: flex; flex-direction: column; gap: 18px; text-align: center; }
+.card h1 { margin: 0; font-family: var(--f-display); font-weight: 400; font-size: clamp(56px, 18vw, 96px); line-height: 1; color: var(--neon);
+  text-shadow: 0 0 16px rgba(255, 79, 123, 0.8), 0 0 50px rgba(255, 79, 123, 0.4); text-wrap: balance; }
+.card .tag { margin: -6px 0 0; font-size: 15px; letter-spacing: 0.3em; color: var(--amber); font-weight: 700; }
+.how { display: grid; grid-template-columns: auto 1fr; gap: 10px 14px; text-align: left; background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 16px 18px; font-size: 14px; line-height: 1.5; }
+.how dt { font-weight: 900; color: var(--cyan); white-space: nowrap; }
+.how dd { margin: 0; color: var(--ink); }
+.cta { pointer-events: auto; align-self: center; font: 900 17px var(--f-body); letter-spacing: 0.12em; color: #1a0710; background: var(--neon);
+  border: 0; border-radius: 999px; padding: 14px 38px; cursor: pointer; box-shadow: 0 0 24px rgba(255, 79, 123, 0.55); }
+.cta:hover { filter: brightness(1.08); }
+.final { font-size: clamp(64px, 20vw, 110px); font-weight: 900; line-height: 1; color: var(--amber); font-variant-numeric: tabular-nums; text-shadow: 0 0 24px rgba(255, 198, 92, 0.45); }
+.stats { display: flex; justify-content: center; gap: 22px; font-size: 14px; color: var(--muted); }
+.stats b { display: block; font-size: 22px; color: var(--ink); font-variant-numeric: tabular-nums; }
+.over-title { margin: 0; font-size: 18px; letter-spacing: 0.3em; color: var(--muted); font-weight: 700; }
+#loading { font-size: 13px; color: var(--muted); }
+
+@media (max-width: 520px) {
+  .fr .mk { height: 18px; }
+  .fr .mk span { font-size: 11px; }
+  .fr .tt { font-size: 12px; height: 20px; }
+  .fr .no { font-size: 9px; }
+  .fr.total .tv { font-size: 17px; }
+  #brand { font-size: 16px; }
+  #status { font-size: 12px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  #msg.show { animation: fade 1.7s linear forwards; }
+  @keyframes fade { 0%, 85% { opacity: 1; } 100% { opacity: 0; } }
+}
+</style>
+
+<canvas id="c" aria-label="保齡球道 3D 畫面"></canvas>
+
+<div id="hud">
+  <div id="top">
+    <div id="board" aria-label="計分表"></div>
+    <div id="meta">
+      <div id="brand">LANE 7</div>
+      <div id="status">第 1 格 · 第 1 球</div>
+      <div id="rack" aria-label="剩餘球瓶"></div>
+    </div>
+  </div>
+  <div id="bottom">
+    <div id="info"></div>
+    <div id="controls">
+      <button class="btn" id="left" aria-label="往左移動站位"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg></button>
+      <div id="hint"><b>按住畫面往上滑</b>把球丟出去，滑得越快球越快<br>滑出弧線會打出曲球 · ← → 調整站位</div>
+      <button class="btn" id="right" aria-label="往右移動站位"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5l7 7-7 7"/></svg></button>
+      <button class="btn" id="mute" aria-label="切換音效"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9h4l5-4v14l-5-4H4z"/><path id="wave" d="M16.5 8.5a5 5 0 0 1 0 7M19 6a8.5 8.5 0 0 1 0 12"/><path id="cross" d="M17 9l5 6M22 9l-5 6" style="display:none"/></svg></button>
+    </div>
+  </div>
+</div>
+
+<div id="msg"><div class="big"></div><div class="small"></div></div>
+
+<div class="overlay" id="start">
+  <div class="card">
+    <h1>LANE 7</h1>
+    <p class="tag">第一人稱保齡球</p>
+    <dl class="how">
+      <dt>丟球</dt><dd>按住畫面往上滑，放開就出手。滑得越快，球速越快。</dd>
+      <dt>瞄準</dt><dd>往左或右斜著滑，球道上會出現瞄準線。</dd>
+      <dt>曲球</dt><dd>滑出一道弧線，球會在球道後段轉彎。</dd>
+      <dt>站位</dt><dd>用 ← → 鍵或兩側按鈕在犯規線後左右移動。</dd>
+    </dl>
+    <button class="cta" id="go">開始打球</button>
+    <div id="loading">標準十格計分 · 60 呎球道</div>
+  </div>
+</div>
+
+<div class="overlay" id="over" hidden>
+  <div class="card">
+    <p class="over-title">比賽結束</p>
+    <div class="final" id="final">0</div>
+    <div class="stats">
+      <div><b id="st-strike">0</b>全倒</div>
+      <div><b id="st-spare">0</b>補中</div>
+      <div><b id="st-best">0</b>最佳分數</div>
+    </div>
+    <button class="cta" id="again">再打一局</button>
+  </div>
+</div>
+
+<script type="importmap">
+{ "imports": {
+  "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/",
+  "cannon-es": "https://cdn.jsdelivr.net/npm/cannon-es@0.20.0/dist/cannon-es.js"
+} }
+</script>
+<script type="module">
+import * as THREE from 'three';
+import * as CANNON from 'cannon-es';
+import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+
+const $ = (s) => document.querySelector(s);
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+
+// ---- Real lane dimensions (metres) ----
+const W = 1.066;          // lane width (41.5")
+const R = 0.1085;         // ball radius (8.5" diameter)
+const GUT = 0.24;         // gutter width
+const COM = 0.14;         // pin centre of mass height
+const HEAD_Z = -18.29;    // head pin, 60 ft from foul line
+const LANE_END = -19.25;  // end of pin deck
+const SP = 0.3048;        // 12" pin spacing
+const ROW = SP * Math.sin(Math.PI / 3);
+const MAXX = W / 2 - R - 0.02;
+
+try { await Promise.race([document.fonts.load('100px Monoton'), new Promise((r) => setTimeout(r, 1500))]); } catch (e) {}
+
+// ---------------- Renderer & scene ----------------
+const canvas = $('#c');
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.05;
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x07080f);
+scene.fog = new THREE.Fog(0x07080f, 24, 46);
+const pmrem = new THREE.PMREMGenerator(renderer);
+scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
+
+const camera = new THREE.PerspectiveCamera(46, 1, 0.03, 90);
+function resize() {
+  renderer.setSize(innerWidth, innerHeight, false);
+  camera.aspect = innerWidth / innerHeight;
+  camera.updateProjectionMatrix();
+}
+addEventListener('resize', resize); resize();
+const ANISO = renderer.capabilities.getMaxAnisotropy();
+
+// ---------------- Textures ----------------
+function woodTexture(light) {
+  const c = document.createElement('canvas'); c.width = 512; c.height = 1024;
+  const g = c.getContext('2d'); const n = 39, bw = c.width / n;
+  for (let i = 0; i < n; i++) {
+    const h = 29 + Math.random() * 6, s = 40 + Math.random() * 14, l = (light ? 72 : 62) + Math.random() * 8;
+    g.fillStyle = `hsl(${h} ${s}% ${l}%)`; g.fillRect(i * bw, 0, bw + 1, c.height);
+    g.save(); g.beginPath(); g.rect(i * bw, 0, bw, c.height); g.clip();
+    for (let k = 0; k < 10; k++) {
+      g.strokeStyle = `hsla(${h - 6} 50% ${l - 20}% / ${0.06 + Math.random() * 0.12})`;
+      g.lineWidth = 0.5 + Math.random() * 1.2;
+      const x = i * bw + Math.random() * bw;
+      g.beginPath(); g.moveTo(x, 0);
+      for (let y = 0; y <= c.height; y += 32) g.lineTo(x + Math.sin(y * 0.012 + k * 1.7 + i) * 1.6, y);
+      g.stroke();
+    }
+    g.restore();
+    g.fillStyle = 'rgba(70,35,10,0.28)'; g.fillRect(i * bw, 0, 1, c.height);
+  }
+  const t = new THREE.CanvasTexture(c);
+  t.colorSpace = THREE.SRGBColorSpace; t.wrapT = THREE.RepeatWrapping; t.anisotropy = ANISO;
+  return t;
+}
+function maskingTexture(num, main) {
+  const c = document.createElement('canvas'); c.width = 640; c.height = 280;
+  const g = c.getContext('2d');
+  const grd = g.createLinearGradient(0, 0, 0, c.height);
+  grd.addColorStop(0, '#141833'); grd.addColorStop(1, '#0a0c1c');
+  g.fillStyle = grd; g.fillRect(0, 0, c.width, c.height);
+  g.globalAlpha = 0.18; g.strokeStyle = '#63ddff'; g.lineWidth = 2;
+  for (let x = -c.height; x < c.width; x += 34) { g.beginPath(); g.moveTo(x, c.height); g.lineTo(x + c.height, 0); g.stroke(); }
+  g.globalAlpha = 1;
+  g.textAlign = 'center'; g.textBaseline = 'middle';
+  g.shadowColor = '#ff4f7b'; g.shadowBlur = main ? 34 : 18;
+  g.fillStyle = main ? '#ff86a3' : '#c9567a';
+  g.font = '170px Monoton, sans-serif'; g.fillText(String(num), c.width / 2, c.height / 2 + 14);
+  g.shadowColor = '#ffc65c'; g.shadowBlur = 14; g.fillStyle = main ? '#ffd98f' : '#a88a52';
+  g.font = '44px Monoton, sans-serif';
+  g.fillText('LANE', 120, c.height / 2 + 6); g.fillText('LANE', c.width - 120, c.height / 2 + 6);
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = ANISO; return t;
+}
+function pinTexture() {
+  const c = document.createElement('canvas'); c.width = 8; c.height = 512;
+  const g = c.getContext('2d'); g.fillStyle = '#f6f3ec'; g.fillRect(0, 0, 8, 512);
+  g.fillStyle = '#c8102e';
+  const band = (a, b) => g.fillRect(0, (1 - b / 0.38) * 512, 8, ((b - a) / 0.38) * 512);
+  band(0.243, 0.256); band(0.266, 0.279);
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return t;
+}
+function ballTexture() {
+  const c = document.createElement('canvas'); c.width = 1024; c.height = 512;
+  const g = c.getContext('2d');
+  const grd = g.createLinearGradient(0, 0, 1024, 512);
+  grd.addColorStop(0, '#121a52'); grd.addColorStop(0.5, '#2338a8'); grd.addColorStop(1, '#14205e');
+  g.fillStyle = grd; g.fillRect(0, 0, 1024, 512);
+  g.filter = 'blur(3px)';
+  for (let i = 0; i < 46; i++) {
+    g.strokeStyle = i % 3 === 0 ? 'rgba(255,79,123,0.55)' : i % 3 === 1 ? 'rgba(99,221,255,0.4)' : 'rgba(10,12,40,0.6)';
+    g.lineWidth = 3 + Math.random() * 16; g.beginPath();
+    const x = Math.random() * 1024, y = Math.random() * 512;
+    g.moveTo(x, y);
+    g.bezierCurveTo(x + (Math.random() - 0.5) * 500, y + (Math.random() - 0.5) * 300, x + (Math.random() - 0.5) * 500, y + (Math.random() - 0.5) * 300, x + (Math.random() - 0.5) * 600, y + (Math.random() - 0.5) * 200);
+    g.stroke();
+  }
+  g.filter = 'none';
+  g.fillStyle = '#05060c';
+  [[500, 210, 15], [540, 210, 15], [520, 285, 18]].forEach(([x, y, r]) => { g.beginPath(); g.ellipse(x, y, r, r * 1.2, 0, 0, Math.PI * 2); g.fill(); });
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = ANISO; return t;
+}
+function blobTexture() {
+  const c = document.createElement('canvas'); c.width = c.height = 128;
+  const g = c.getContext('2d'); const grd = g.createRadialGradient(64, 64, 4, 64, 64, 64);
+  grd.addColorStop(0, 'rgba(0,0,0,0.65)'); grd.addColorStop(1, 'rgba(0,0,0,0)');
+  g.fillStyle = grd; g.fillRect(0, 0, 128, 128);
+  return new THREE.CanvasTexture(c);
+}
+
+// ---------------- Geometry ----------------
+function pinGeometry() {
+  const prof = [[0, 0], [0.026, 0], [0.042, 0.03], [0.056, 0.075], [0.0605, 0.114], [0.058, 0.15], [0.047, 0.19], [0.032, 0.225],
+    [0.0235, 0.252], [0.0245, 0.275], [0.03, 0.302], [0.0318, 0.325], [0.028, 0.352], [0.018, 0.372], [0.004, 0.3795], [0, 0.38]];
+  const pts = new THREE.SplineCurve(prof.map((p) => new THREE.Vector2(p[0], p[1]))).getPoints(110);
+  pts.forEach((p) => { p.x = Math.max(0, p.x); });
+  pts[0].set(0, 0); pts[pts.length - 1].set(0, 0.38);
+  const g = new THREE.LatheGeometry(pts, 28);
+  const pos = g.attributes.position, uv = g.attributes.uv;
+  for (let i = 0; i < pos.count; i++) uv.setY(i, pos.getY(i) / 0.38);
+  return g;
+}
+const PIN_GEO = pinGeometry();
+const PIN_MAT = new THREE.MeshStandardMaterial({ map: pinTexture(), roughness: 0.28, envMapIntensity: 0.55 });
+
+const pinSpots = [];
+for (let r = 0; r < 4; r++) for (let i = 0; i <= r; i++) pinSpots.push({ x: (i - r / 2) * SP, z: HEAD_Z - r * ROW, num: (r * (r + 1)) / 2 + i + 1, row: r, i });
+
+// ---------------- Alley (visual) ----------------
+const laneTex = woodTexture(false); laneTex.repeat.set(1, 19.25 / 2.6);
+const apprTex = woodTexture(true); apprTex.repeat.set(1, 4.5 / 2.6);
+const laneMat = new THREE.MeshStandardMaterial({ map: laneTex, roughness: 0.2, envMapIntensity: 0.45 });
+const apprMat = new THREE.MeshStandardMaterial({ map: apprTex, roughness: 0.45, envMapIntensity: 0.3 });
+const gutterMat = new THREE.MeshStandardMaterial({ color: 0x2b2f3d, metalness: 0.7, roughness: 0.35, side: THREE.DoubleSide });
+const darkMat = new THREE.MeshStandardMaterial({ color: 0x151829, roughness: 0.8 });
+const blackMat = new THREE.MeshBasicMaterial({ color: 0x030306 });
+const arrowMat = new THREE.MeshStandardMaterial({ color: 0x5a1c12, roughness: 0.4 });
+const neonPink = new THREE.MeshBasicMaterial({ color: 0xff4f7b });
+const neonAmber = new THREE.MeshBasicMaterial({ color: 0xffc65c });
+const ceilingLight = new THREE.MeshBasicMaterial({ color: 0xffe6bf });
+
+function plane(w, h, mat, x, y, z, rotX = -Math.PI / 2) {
+  const m = new THREE.Mesh(new THREE.PlaneGeometry(w, h), mat);
+  m.rotation.x = rotX; m.position.set(x, y, z); scene.add(m); return m;
+}
+function box(w, h, d, mat, x, y, z) {
+  const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat);
+  m.position.set(x, y, z); scene.add(m); return m;
+}
+const arrowShape = new THREE.Shape([new THREE.Vector2(-0.016, 0), new THREE.Vector2(0.016, 0), new THREE.Vector2(0, 0.16)]);
+const arrowGeo = new THREE.ShapeGeometry(arrowShape); arrowGeo.rotateX(-Math.PI / 2);
+const dotGeo = new THREE.CircleGeometry(0.011, 12); dotGeo.rotateX(-Math.PI / 2);
+const gutterGeo = new THREE.CylinderGeometry(0.12, 0.12, 19.25, 18, 1, true, -Math.PI / 2, Math.PI); gutterGeo.rotateX(Math.PI / 2);
+
+function buildLane(xo, num, main) {
+  const lane = plane(W, 19.25, laneMat, xo, 0, LANE_END / 2); lane.receiveShadow = true;
+  const ap = plane(W + 2 * GUT + 0.1, 4.6, apprMat, xo, 0, 2.3); ap.receiveShadow = true;
+  plane(W + 2 * GUT + 0.1, 0.016, blackMat, xo, 0.0015, 0);
+  for (const s of [-1, 1]) {
+    const gm = new THREE.Mesh(gutterGeo, gutterMat); gm.position.set(xo + s * (W / 2 + 0.12), 0, LANE_END / 2); gm.receiveShadow = true; scene.add(gm);
+    box(0.1, 0.07, 24.2, darkMat, xo + s * (W / 2 + GUT + 0.05), 0.035, -8.0);
+    box(0.06, 0.95, 3.5, darkMat, xo + s * 0.86, 0.475, -18.75);
+    box(0.012, 0.012, 3.5, main ? neonPink : neonAmber, xo + s * 0.828, 0.95, -18.75);
+  }
+  const bw = W / 39;
+  [5, 10, 15, 20, 25, 30, 35].forEach((b) => {
+    const x = xo + W / 2 - (b - 0.5) * bw, d = Math.abs(b - 20) / 5;
+    const a = new THREE.Mesh(arrowGeo, arrowMat); a.position.set(x, 0.001, -4.88 + d * 0.152); scene.add(a);
+  });
+  [3, 5, 8, 11, 14, 29, 32, 35, 37].forEach((b) => {
+    const dm = new THREE.Mesh(dotGeo, arrowMat); dm.position.set(xo + W / 2 - (b - 0.5) * bw, 0.001, -2.13); scene.add(dm);
+    const dm2 = dm.clone(); dm2.position.z = 1.8; scene.add(dm2);
+  });
+  box(1.72, 0.02, 1.25, blackMat, xo, -0.36, LANE_END - 0.6);
+  plane(1.72, 1.4, blackMat, xo, 0.3, -20.4, 0);
+  const mask = plane(1.86, 0.8, new THREE.MeshBasicMaterial({ map: maskingTexture(num, main), toneMapped: false }), xo, 1.36, -17.85, 0);
+  box(0.1, 0.02, 20, ceilingLight, xo, 3.15, -8);
+  if (!main) {
+    const inst = new THREE.InstancedMesh(PIN_GEO, PIN_MAT, 10); const m = new THREE.Matrix4();
+    pinSpots.forEach((s, k) => { m.makeTranslation(xo + s.x, 0, s.z); inst.setMatrixAt(k, m); });
+    inst.castShadow = true; scene.add(inst);
+  }
+  return mask;
+}
+[[-3.5, 5], [-1.75, 6], [0, 7], [1.75, 8], [3.5, 9]].forEach(([x, n]) => buildLane(x, n, n === 7));
+plane(12, 30, new THREE.MeshStandardMaterial({ color: 0x0c0e1a, roughness: 1 }), 0, 3.2, -8, Math.PI / 2);
+box(9, 0.025, 0.025, neonPink, 0, 1.77, -17.84);
+box(9, 0.018, 0.018, neonAmber, 0, 0.955, -17.84);
+plane(12, 8, new THREE.MeshStandardMaterial({ color: 0x0f1122, roughness: 0.9 }), 0, -0.02, 8.5);
+
+// Lights
+scene.add(new THREE.HemisphereLight(0xc4d3ff, 0x2b1d12, 0.55));
+const spot = new THREE.SpotLight(0xfff0dc, 38, 9, 0.55, 0.55, 1.4);
+spot.position.set(0, 2.7, -16.6); spot.target.position.set(0, 0, -18.75);
+spot.castShadow = true; spot.shadow.mapSize.set(1024, 1024); spot.shadow.camera.near = 0.5; spot.shadow.camera.far = 6; spot.shadow.normalBias = 0.02;
+scene.add(spot, spot.target);
+[1, -4, -9, -14].forEach((z) => { const p = new THREE.PointLight(0xffe2bd, 7, 0, 2); p.position.set(0, 2.7, z); scene.add(p); });
+
+// Pins (dynamic meshes, origin at centre of mass)
+const PIN_GEO_DYN = PIN_GEO.clone(); PIN_GEO_DYN.translate(0, -COM, 0);
+
+// Ball
+const ballMesh = new THREE.Mesh(new THREE.SphereGeometry(R, 48, 32),
+  new THREE.MeshPhysicalMaterial({ map: ballTexture(), roughness: 0.16, clearcoat: 1, clearcoatRoughness: 0.06, envMapIntensity: 0.9 }));
+ballMesh.castShadow = true; scene.add(ballMesh);
+const blob = new THREE.Mesh(new THREE.PlaneGeometry(0.4, 0.4), new THREE.MeshBasicMaterial({ map: blobTexture(), transparent: true, depthWrite: false }));
+blob.rotation.x = -Math.PI / 2; blob.visible = false; scene.add(blob);
+
+// Aim guide
+const guideAlpha = (() => { const c = document.createElement('canvas'); c.width = 4; c.height = 256; const g = c.getContext('2d');
+  const grd = g.createLinearGradient(0, 0, 0, 256); grd.addColorStop(0, '#000'); grd.addColorStop(1, '#fff'); g.fillStyle = grd; g.fillRect(0, 0, 4, 256); return new THREE.CanvasTexture(c); })();
+const guideGeo = new THREE.PlaneGeometry(0.035, 13); guideGeo.rotateX(-Math.PI / 2); guideGeo.translate(0, 0.004, -6.5);
+const guide = new THREE.Mesh(guideGeo, new THREE.MeshBasicMaterial({ color: 0xff4f7b, transparent: true, opacity: 0.75, alphaMap: guideAlpha, depthWrite: false }));
+guide.visible = false; scene.add(guide);
+
+// ---------------- Physics ----------------
+const world = new CANNON.World({ gravity: new CANNON.Vec3(0, -9.82, 0) });
+world.allowSleep = true;
+world.solver.iterations = 20;
+world.defaultContactMaterial.friction = 0.2;
+world.defaultContactMaterial.restitution = 0.25;
+world.defaultContactMaterial.contactEquationStiffness = 1e8;
+world.defaultContactMaterial.contactEquationRelaxation = 3;
+const mLane = new CANNON.Material('lane'), mBall = new CANNON.Material('ball'), mPin = new CANNON.Material('pin');
+const cm = (a, b, friction, restitution) => world.addContactMaterial(new CANNON.ContactMaterial(a, b, { friction, restitution, contactEquationStiffness: 1e8, contactEquationRelaxation: 3 }));
+cm(mBall, mLane, 0.04, 0.05);
+cm(mPin, mLane, 0.2, 0.15);
+cm(mBall, mPin, 0.15, 0.62);
+cm(mPin, mPin, 0.15, 0.58);
+
+function staticBox(hx, hy, hz, x, y, z, mat) {
+  const b = new CANNON.Body({ mass: 0, material: mat, shape: new CANNON.Box(new CANNON.Vec3(hx, hy, hz)) });
+  b.position.set(x, y, z); world.addBody(b); return b;
+}
+staticBox(W / 2, 0.1, 11.2, 0, -0.1, LANE_END + 11.2, mLane);
+for (const s of [-1, 1]) {
+  staticBox(GUT / 2, 0.1, 11.2, s * (W / 2 + GUT / 2), -0.22, LANE_END + 11.2, mLane);
+  staticBox(0.05, 0.7, 12.5, s * (W / 2 + GUT + 0.05), 0.3, -8.4);
+}
+staticBox(0.95, 0.1, 0.65, 0, -0.45, LANE_END - 0.6, mLane);
+staticBox(0.95, 1, 0.1, 0, 0.5, -20.5);
+
+const ballBody = new CANNON.Body({ mass: 6.5, material: mBall, shape: new CANNON.Sphere(R), linearDamping: 0.015, angularDamping: 0.05 });
+ballBody.allowSleep = false;
+let ballInWorld = false;
+
+const pins = pinSpots.map((s) => {
+  const body = new CANNON.Body({ mass: 1.5, material: mPin, linearDamping: 0.02, angularDamping: 0.06 });
+  body.sleepSpeedLimit = 0.08; body.sleepTimeLimit = 0.4;
+  body.addShape(new CANNON.Cylinder(0.056, 0.034, 0.2, 10), new CANNON.Vec3(0, 0.1 - COM, 0));
+  body.addShape(new CANNON.Cylinder(0.03, 0.052, 0.18, 10), new CANNON.Vec3(0, 0.29 - COM, 0));
+  const mesh = new THREE.Mesh(PIN_GEO_DYN, PIN_MAT); mesh.castShadow = true; scene.add(mesh);
+  const pin = { s, body, mesh, inWorld: false };
+  body.addEventListener('collide', (e) => {
+    const v = Math.abs(e.contact.getImpactVelocityAlongNormal());
+    if (v > 0.5) clack(v, e.body === ballBody);
+  });
+  return pin;
+});
+const UP = new CANNON.Vec3(0, 1, 0), tmpV = new CANNON.Vec3();
+function isDown(p) {
+  if (!p.inWorld) return true;
+  p.body.quaternion.vmult(UP, tmpV);
+  const b = p.body.position;
+  return tmpV.y < 0.82 || b.y < COM - 0.06 || Math.abs(b.x) > W / 2 + 0.02 || b.z < LANE_END;
+}
+const standingCount = () => pins.filter((p) => !isDown(p)).length;
+
+function rackPins() {
+  pins.forEach((p) => {
+    if (!p.inWorld) { world.addBody(p.body); p.inWorld = true; }
+    p.body.position.set(p.s.x, COM, p.s.z); p.body.quaternion.set(0, 0, 0, 1);
+    p.body.velocity.set(0, 0, 0); p.body.angularVelocity.set(0, 0, 0);
+    p.body.sleep(); p.mesh.visible = true;
+  });
+  updateRack();
+}
+function sweepPins() {
+  pins.forEach((p) => {
+    if (!p.inWorld) return;
+    if (isDown(p)) { world.removeBody(p.body); p.inWorld = false; p.mesh.visible = false; }
+    else { p.body.velocity.set(0, 0, 0); p.body.angularVelocity.set(0, 0, 0); p.body.sleep(); }
+  });
+  updateRack();
+}
+
+// hook: the back end of the lane is dry, so side spin bites there
+world.addEventListener('preStep', () => {
+  if (!ballInWorld || !shot) return;
+  const p = ballBody.position;
+  if (Math.abs(p.x) < W / 2 && p.y > 0.05 && p.z < -5 && p.z > HEAD_Z + 0.2) {
+    const bite = clamp((-p.z - 5) / 6, 0, 1);
+    ballBody.applyForce(new CANNON.Vec3(shot.spin * 5.2 * bite, 0, 0));
+  }
+});
+
+// ---------------- Audio ----------------
+let ac = null, master = null, rumbleGain = null, noiseBuf = null, muted = false, lastClack = 0;
+function initAudio() {
+  if (ac) { ac.resume(); return; }
+  try { ac = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) { return; }
+  master = ac.createGain(); master.gain.value = muted ? 0 : 0.8; master.connect(ac.destination);
+  noiseBuf = ac.createBuffer(1, ac.sampleRate * 2, ac.sampleRate);
+  const d = noiseBuf.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+  const src = ac.createBufferSource(); src.buffer = noiseBuf; src.loop = true;
+  const lp = ac.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 150;
+  rumbleGain = ac.createGain(); rumbleGain.gain.value = 0;
+  src.connect(lp).connect(rumbleGain).connect(master); src.start();
+}
+function clack(v, heavy) {
+  if (!ac) return;
+  const t = ac.currentTime; if (t - lastClack < 0.014) return; lastClack = t;
+  const amp = Math.min(1, v / 5) * (heavy ? 0.9 : 0.55);
+  const s = ac.createBufferSource(); s.buffer = noiseBuf;
+  const bp = ac.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = (heavy ? 900 : 1700) + Math.random() * 1800; bp.Q.value = 2.5;
+  const g = ac.createGain(); g.gain.setValueAtTime(amp, t); g.gain.exponentialRampToValueAtTime(0.001, t + 0.1);
+  s.connect(bp).connect(g).connect(master); s.start(t, Math.random() * 1.5, 0.12);
+  const o = ac.createOscillator(); o.type = 'triangle'; o.frequency.value = 650 + Math.random() * 900;
+  const g2 = ac.createGain(); g2.gain.setValueAtTime(amp * 0.3, t); g2.gain.exponentialRampToValueAtTime(0.001, t + 0.13);
+  o.connect(g2).connect(master); o.start(t); o.stop(t + 0.14);
+}
+function thunk() {
+  if (!ac) return; const t = ac.currentTime;
+  const o = ac.createOscillator(); o.frequency.setValueAtTime(110, t); o.frequency.exponentialRampToValueAtTime(40, t + 0.25);
+  const g = ac.createGain(); g.gain.setValueAtTime(0.7, t); g.gain.exponentialRampToValueAtTime(0.001, t + 0.3);
+  o.connect(g).connect(master); o.start(t); o.stop(t + 0.32);
+}
+function jingle(notes) {
+  if (!ac) return; const t0 = ac.currentTime + 0.05;
+  notes.forEach((f, i) => {
+    const t = t0 + i * 0.09, o = ac.createOscillator(); o.type = 'square'; o.frequency.value = f;
+    const g = ac.createGain(); g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.09, t + 0.01); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.22);
+    o.connect(g).connect(master); o.start(t); o.stop(t + 0.24);
+  });
+}
+$('#mute').addEventListener('click', () => {
+  muted = !muted; if (master) master.gain.value = muted ? 0 : 0.8;
+  $('#wave').style.display = muted ? 'none' : ''; $('#cross').style.display = muted ? '' : 'none';
+});
+
+// ---------------- Scoring ----------------
+let frames, frame, ballNo, stats, standingBefore = 10;
+function marksFor(f, fr) {
+  const m = (v) => (v === 0 ? '-' : String(v));
+  if (f < 9) {
+    if (fr[0] === 10) return ['', 'X'];
+    return [fr[0] !== undefined ? m(fr[0]) : '', fr[1] !== undefined ? (fr[0] + fr[1] === 10 ? '/' : m(fr[1])) : ''];
+  }
+  const [a, b, c] = fr, out = ['', '', ''];
+  if (a !== undefined) out[0] = a === 10 ? 'X' : m(a);
+  if (b !== undefined) out[1] = a === 10 ? (b === 10 ? 'X' : m(b)) : (a + b === 10 ? '/' : m(b));
+  if (c !== undefined) out[2] = (a === 10 && b !== 10) ? (b + c === 10 ? '/' : m(c)) : (c === 10 ? 'X' : m(c));
+  return out;
+}
+function totals() {
+  const flat = frames.flat(); let idx = 0, run = 0, ok = true; const out = [];
+  for (let f = 0; f < 10; f++) {
+    const fr = frames[f]; let val = null;
+    if (ok && fr.length) {
+      if (f < 9) {
+        if (fr[0] === 10) { if (flat[idx + 1] !== undefined && flat[idx + 2] !== undefined) val = 10 + flat[idx + 1] + flat[idx + 2]; }
+        else if (fr.length === 2) { if (fr[0] + fr[1] === 10) { if (flat[idx + 2] !== undefined) val = 10 + flat[idx + 2]; } else val = fr[0] + fr[1]; }
+      } else if (fr.length === 3 || (fr.length === 2 && fr[0] + fr[1] < 10)) val = fr.reduce((s, v) => s + v, 0);
+    }
+    if (val === null) ok = false; else run += val;
+    out.push(val === null ? null : run); idx += fr.length;
+  }
+  return { out, run };
+}
+const boardEl = $('#board');
+for (let f = 0; f < 10; f++) {
+  const d = document.createElement('div'); d.className = 'fr';
+  d.innerHTML = `<div class="no">${f + 1}</div><div class="mk">${'<span></span>'.repeat(f < 9 ? 2 : 3)}</div><div class="tt"></div>`;
+  boardEl.appendChild(d);
+}
+const totEl = document.createElement('div'); totEl.className = 'fr total';
+totEl.innerHTML = '<div class="no">總分</div><div class="tv" id="tot">0</div>'; boardEl.appendChild(totEl);
+function renderBoard() {
+  const { out, run } = totals();
+  [...boardEl.children].slice(0, 10).forEach((el, f) => {
+    const mk = marksFor(f, frames[f]);
+    [...el.querySelectorAll('.mk span')].forEach((s, i) => { s.textContent = mk[i]; s.className = mk[i] === 'X' ? 'x' : mk[i] === '/' ? 'sp' : ''; });
+    el.querySelector('.tt').textContent = out[f] ?? '';
+    el.classList.toggle('cur', f === frame && state !== 'over');
+  });
+  $('#tot').textContent = run;
+  $('#status').textContent = state === 'over' ? '比賽結束' : `第 ${frame + 1} 格 · 第 ${ballNo + 1} 球`;
+}
+const rackEl = $('#rack');
+[[7, 8, 9, 10], [4, 5, 6], [2, 3], [1]].forEach((row) => {
+  const r = document.createElement('div'); r.className = 'row';
+  row.forEach((n) => { const i = document.createElement('i'); i.dataset.n = n; r.appendChild(i); });
+  rackEl.appendChild(r);
+});
+function updateRack() {
+  pins.forEach((p) => rackEl.querySelector(`i[data-n="${p.s.num}"]`).classList.toggle('down', isDown(p)));
+}
+
+// ---------------- UI helpers ----------------
+const msgEl = $('#msg');
+function showMsg(big, small, kind) {
+  msgEl.className = kind; msgEl.querySelector('.big').textContent = big; msgEl.querySelector('.small').textContent = small || '';
+  void msgEl.offsetWidth; msgEl.classList.add('show');
+}
+let infoTimer;
+function showInfo(text) {
+  const el = $('#info'); el.textContent = text; el.style.opacity = 1;
+  clearTimeout(infoTimer); infoTimer = setTimeout(() => { el.style.opacity = 0; }, 4200);
+}
+function flashHint() { const h = $('#hint'); h.classList.add('flash'); setTimeout(() => h.classList.remove('flash'), 900); }
+
+// ---------------- Game flow ----------------
+let state = 'intro', px = 0, shot = null, tState = 0, settleT = null, resultT = 0, gutterFlag = false, pending = null;
+const relFrom = new THREE.Vector3(), relTo = new THREE.Vector3();
+let best = 0; try { best = +localStorage.getItem('lane7-best') || 0; } catch (e) {}
+
+function newGame() {
+  frames = Array.from({ length: 10 }, () => []); frame = 0; ballNo = 0; stats = { strike: 0, spare: 0 };
+  if (ballInWorld) { world.removeBody(ballBody); ballInWorld = false; }
+  rackPins(); state = 'aim'; px = 0; renderBoard();
+}
+
+function analyze(pts) {
+  const a = pts[0], e = pts[pts.length - 1];
+  const dy = a.y - e.y, dx = e.x - a.x;
+  const ang = clamp(Math.atan2(dx, Math.max(dy, 1)) * 0.25, -0.085, 0.085);
+  let k = pts.length - 1; while (k > 0 && e.t - pts[k - 1].t < 110) k--;
+  const p = pts[k], dtm = Math.max((e.t - p.t) / 1000, 0.016);
+  const vn = Math.max(0, (p.y - e.y) / dtm) / innerHeight;
+  const speed = clamp(3.4 + vn * 1.5, 3.6, 10.8);
+  let spin = 0; const n = pts.length;
+  if (n >= 6 && dy > 60) {
+    const b = pts[Math.floor(n * 0.45)], c = pts[Math.floor(n * 0.55)];
+    const a1 = Math.atan2(b.x - a.x, a.y - b.y), a2 = Math.atan2(e.x - c.x, c.y - e.y);
+    spin = clamp((a2 - a1) / 0.8, -1, 1); if (Math.abs(spin) < 0.15) spin = 0;
+  }
+  return { dy, ang, speed, spin };
+}
+
+let drag = null;
+canvas.addEventListener('pointerdown', (e) => {
+  if (state !== 'aim') return;
+  initAudio();
+  try { canvas.setPointerCapture(e.pointerId); } catch (err) {}
+  drag = { pts: [{ x: e.clientX, y: e.clientY, t: performance.now() }] };
+});
+canvas.addEventListener('pointermove', (e) => {
+  if (!drag) return;
+  drag.pts.push({ x: e.clientX, y: e.clientY, t: performance.now() });
+  const s = analyze(drag.pts);
+  guide.visible = s.dy > 20; guide.position.set(px, 0, -0.3); guide.rotation.y = -s.ang;
+});
+const endDrag = (e, cancel) => {
+  if (!drag) return;
+  const pts = drag.pts; drag = null; guide.visible = false;
+  if (cancel || state !== 'aim') return;
+  pts.push({ x: e.clientX, y: e.clientY, t: performance.now() });
+  const s = analyze(pts);
+  if (s.dy < 50) { flashHint(); return; }
+  shot = s; state = 'release'; tState = 0; relFrom.copy(ballMesh.position); relTo.set(px, R, -0.3);
+  const side = s.spin === 0 ? '直球' : `${s.spin < 0 ? '左' : '右'}曲 ${Math.round(Math.abs(s.spin) * 100)}%`;
+  showInfo(`球速 ${Math.round(s.speed * 3.6)} km/h · ${side}`);
+};
+canvas.addEventListener('pointerup', (e) => endDrag(e, false));
+canvas.addEventListener('pointercancel', (e) => endDrag(e, true));
+canvas.addEventListener('contextmenu', (e) => e.preventDefault());
+
+let moveDir = 0; const keys = {};
+addEventListener('keydown', (e) => { keys[e.key] = true; });
+addEventListener('keyup', (e) => { keys[e.key] = false; });
+for (const [id, d] of [['#left', -1], ['#right', 1]]) {
+  const b = $(id);
+  b.addEventListener('pointerdown', (e) => { moveDir = d; initAudio(); try { b.setPointerCapture(e.pointerId); } catch (err) {} });
+  ['pointerup', 'pointercancel', 'lostpointercapture'].forEach((ev) => b.addEventListener(ev, () => { moveDir = 0; }));
+}
+
+function launch() {
+  const { speed, ang, spin } = shot;
+  ballBody.position.set(px, R, -0.3);
+  const q = ballMesh.quaternion; ballBody.quaternion.set(q.x, q.y, q.z, q.w);
+  ballBody.velocity.set(Math.sin(ang) * speed, 0, -Math.cos(ang) * speed);
+  ballBody.angularVelocity.set(-speed / R * 0.7, spin * 14, 0);
+  if (!ballInWorld) { world.addBody(ballBody); ballInWorld = true; }
+  standingBefore = standingCount();
+  state = 'rolling'; tState = 0; settleT = null; gutterFlag = false;
+  thunk();
+}
+
+function pinsQuiet() {
+  return pins.every((p) => !p.inWorld || p.body.sleepState === CANNON.Body.SLEEPING ||
+    (p.body.velocity.length() < 0.06 && p.body.angularVelocity.length() < 0.5));
+}
+
+function evaluate() {
+  const now = standingCount(), knocked = standingBefore - now;
+  frames[frame].push(knocked);
+  const fr = frames[frame];
+  let label = null, kind = 'plain', nextFrame = false, resetRack = false, over = false;
+  if (frame < 9) {
+    if (ballNo === 0 && knocked === 10) { label = 'STRIKE'; nextFrame = true; }
+    else if (ballNo === 1) { if (now === 0) label = 'SPARE'; nextFrame = true; }
+  } else {
+    if (standingBefore === 10 && knocked === 10) label = 'STRIKE';
+    else if (now === 0) label = 'SPARE';
+    if (now === 0) resetRack = true;
+    if (fr.length === 3 || (fr.length === 2 && fr[0] + fr[1] < 10)) over = true;
+  }
+  if (label === 'STRIKE') { stats.strike++; kind = ''; jingle([523, 659, 784, 1047, 1319]); showMsg('STRIKE', '全倒！', kind); }
+  else if (label === 'SPARE') { stats.spare++; kind = 'spare'; jingle([587, 880, 1175]); showMsg('SPARE', '補中！', kind); }
+  else if (knocked === 0) showMsg(gutterFlag ? '洗溝' : '沒打到', gutterFlag ? '球掉進溝裡了' : '0 瓶', 'plain');
+  else showMsg(`${knocked} 瓶`, now > 0 ? `還剩 ${now} 瓶` : '', 'plain');
+  updateRack();
+  pending = { nextFrame, resetRack, over };
+  state = 'result'; resultT = 0;
+}
+
+function afterResult() {
+  const { nextFrame, resetRack, over } = pending;
+  if (ballInWorld) { world.removeBody(ballBody); ballInWorld = false; }
+  blob.visible = false;
+  if (over) {
+    state = 'over'; renderBoard();
+    const score = totals().run;
+    if (score > best) { best = score; try { localStorage.setItem('lane7-best', String(best)); } catch (e) {} }
+    $('#final').textContent = score; $('#st-strike').textContent = stats.strike; $('#st-spare').textContent = stats.spare; $('#st-best').textContent = best;
+    $('#over').hidden = false;
+    return;
+  }
+  if (nextFrame) { frame++; ballNo = 0; rackPins(); }
+  else { ballNo++; if (resetRack) rackPins(); else sweepPins(); }
+  state = 'aim'; renderBoard();
+}
+
+$('#go').addEventListener('click', () => { initAudio(); $('#start').hidden = true; newGame(); });
+$('#again').addEventListener('click', () => { $('#over').hidden = true; newGame(); });
+
+// ---------------- Loop ----------------
+const camPos = new THREE.Vector3(0, 1.42, 1.7), camLook = new THREE.Vector3(0, 0.15, -18.6);
+const wantPos = new THREE.Vector3(), wantLook = new THREE.Vector3(), held = new THREE.Vector3();
+const spinAxis = new THREE.Vector3(1, 0, 0);
+frames = Array.from({ length: 10 }, () => []); frame = 0; ballNo = 0; stats = { strike: 0, spare: 0 };
+rackPins(); renderBoard();
+
+const clock = new THREE.Clock();
+let elapsed = 0;
+function update(dt) {
+  elapsed += dt;
+  if (state === 'aim') {
+    const d = moveDir || ((keys.ArrowLeft || keys.a || keys.A) ? -1 : 0) + ((keys.ArrowRight || keys.d || keys.D) ? 1 : 0);
+    px = clamp(px + d * 0.9 * dt, -MAXX, MAXX);
+  }
+  world.step(1 / 240, dt, 16);
+
+  pins.forEach((p) => {
+    if (!p.inWorld) return;
+    if (p.body.position.y < -2) { world.removeBody(p.body); p.inWorld = false; p.mesh.visible = false; return; }
+    p.mesh.position.copy(p.body.position); p.mesh.quaternion.copy(p.body.quaternion);
+  });
+
+  // camera targets
+  if (state === 'intro' || state === 'aim' || state === 'over') {
+    const sway = state === 'intro' ? Math.sin(elapsed * 0.4) * 0.12 : 0;
+    wantPos.set(px + sway, 1.42, 1.7); wantLook.set(px * 0.25 + sway * 0.5, 0.15, -18.6);
+  } else if (state === 'release') {
+    wantPos.set(px, 1.2, 1.1); wantLook.set(px * 0.25, 0.1, -18.6);
+  } else {
+    const b = ballBody.position;
+    const cz = Math.max(b.z + 2.3, -14.6);
+    const lift = clamp((cz + 14.6) / 16, 0, 1);
+    wantPos.set(clamp(b.x, -0.6, 0.6) * 0.5, 0.72 + 0.5 * lift, cz);
+    wantLook.set(clamp(b.x, -0.6, 0.6) * 0.3, 0.12, Math.min(b.z - 4, -18.6));
+  }
+  const k = 1 - Math.exp(-dt * (state === 'rolling' ? 7 : 4.5));
+  camPos.lerp(wantPos, k); camLook.lerp(wantLook, k);
+  camera.position.copy(camPos); camera.lookAt(camLook); camera.updateMatrixWorld();
+
+  // ball
+  if (state === 'intro' || state === 'aim') {
+    held.set(0.17, -0.27, -0.62); camera.localToWorld(held);
+    ballMesh.position.copy(held); ballMesh.rotateOnAxis(spinAxis, dt * 0.3);
+    ballMesh.visible = true; blob.visible = false;
+  } else if (state === 'release') {
+    tState += dt; const u = clamp(tState / 0.26, 0, 1);
+    ballMesh.position.lerpVectors(relFrom, relTo, u * u);
+    blob.visible = true; blob.position.set(ballMesh.position.x, 0.002, ballMesh.position.z); blob.material.opacity = u;
+    if (u >= 1) launch();
+  } else if (ballInWorld) {
+    ballMesh.position.copy(ballBody.position); ballMesh.quaternion.copy(ballBody.quaternion);
+    const b = ballBody.position, onDeck = b.z > LANE_END;
+    blob.visible = onDeck && b.y > -0.2;
+    blob.position.set(b.x, Math.abs(b.x) > W / 2 ? -0.115 : 0.002, b.z);
+    blob.material.opacity = clamp(1 - (b.y - R) * 4, 0, 1);
+  }
+
+  if (state === 'rolling' || state === 'result') {
+    const b = ballBody.position;
+    if (state === 'rolling') {
+      tState += dt;
+      if (Math.abs(b.x) > W / 2 + 0.01 && b.z > HEAD_Z + 0.3) gutterFlag = true;
+      if (settleT === null && (b.z < LANE_END - 0.05 || b.y < -0.5 || tState > 9 || (tState > 1 && ballBody.velocity.length() < 0.15))) settleT = 0;
+      if (settleT !== null) { settleT += dt; if ((settleT > 1.4 && pinsQuiet()) || settleT > 4.2) evaluate(); }
+    } else {
+      resultT += dt; if (resultT > 1.9) afterResult();
+    }
+    if (rumbleGain) {
+      const rolling = ballInWorld && b.y < R + 0.02 && b.y > -0.05 && b.z > LANE_END;
+      rumbleGain.gain.setTargetAtTime(rolling ? 0.3 * Math.min(1, ballBody.velocity.length() / 8) : 0, ac.currentTime, 0.06);
+    }
+  } else if (rumbleGain) rumbleGain.gain.setTargetAtTime(0, ac.currentTime, 0.1);
+}
+function loop() {
+  requestAnimationFrame(loop);
+  update(Math.min(clock.getDelta(), 0.05));
+  renderer.render(scene, camera);
+}
+loop();
+</script>
