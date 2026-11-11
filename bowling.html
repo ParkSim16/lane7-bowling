@@ -105,12 +105,12 @@ body {
 }
 
 .overlay {
-  position: fixed; inset: 0; display: grid; place-items: center; background: rgba(5, 6, 14, 0.72);
+  position: fixed; inset: 0; display: flex; overflow-y: auto; background: rgba(5, 6, 14, 0.72);
   backdrop-filter: blur(5px); -webkit-backdrop-filter: blur(5px);
   padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
   padding-block: calc(env(safe-area-inset-top, 0px) + 16px) calc(env(safe-area-inset-bottom, 0px) + 16px);
 }
-.card { width: min(440px, 100%); display: flex; flex-direction: column; gap: 18px; text-align: center; }
+.card { width: min(440px, 100%); margin: auto; display: flex; flex-direction: column; gap: 18px; text-align: center; }
 .card h1 { margin: 0; font-family: var(--f-display); font-weight: 400; font-size: clamp(56px, 18vw, 96px); line-height: 1; color: var(--neon);
   text-shadow: 0 0 16px rgba(255, 79, 123, 0.8), 0 0 50px rgba(255, 79, 123, 0.4); text-wrap: balance; }
 .card .tag { margin: -6px 0 0; font-size: 15px; letter-spacing: 0.3em; color: var(--amber); font-weight: 700; }
@@ -145,6 +145,42 @@ body {
 .keyhint { margin: 0; font-size: 12px; color: var(--muted); }
 body.paused #msg { animation-play-state: paused; }
 
+/* Multiplayer: setup on the start card, turn chips under the scoresheet, ranking on the end card */
+.setup { display: flex; flex-direction: column; gap: 10px; text-align: left; background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px; }
+.setup-label { font-size: 13px; font-weight: 700; color: var(--muted); letter-spacing: 0.1em; }
+.seg { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; }
+.seg button { pointer-events: auto; font: 700 15px var(--f-body); color: var(--ink); background: transparent; border: 1px solid var(--line);
+  border-radius: 999px; padding: 8px 0; cursor: pointer; transition: background 0.15s, color 0.15s; }
+.seg button[aria-checked="true"] { background: var(--cyan); border-color: var(--cyan); color: #04141a; }
+.seg button:focus-visible { outline: 2px solid var(--amber); outline-offset: 2px; }
+#names { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+#names input { font: 500 16px var(--f-body); color: var(--ink); background: rgba(255, 255, 255, 0.06); border: 1px solid var(--line); border-radius: 8px;
+  padding: 9px 11px; min-width: 0; -webkit-user-select: text; user-select: text; }
+#names input:only-child { grid-column: 1 / -1; }
+#names input::placeholder { color: var(--muted); }
+#names input:focus-visible { outline: 2px solid var(--amber); outline-offset: 1px; }
+#players { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; }
+#players span { font-size: 12px; font-weight: 500; color: var(--muted); background: var(--panel); border: 1px solid var(--line); border-radius: 999px;
+  padding: 3px 11px; font-variant-numeric: tabular-nums; backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); }
+#players span b { margin-left: 6px; color: var(--ink); }
+#players span.on { color: var(--ink); border-color: var(--cyan); box-shadow: 0 0 10px rgba(99, 221, 255, 0.35); }
+#players span.on b { color: var(--cyan); }
+#msg.turn .big { font-family: var(--f-body); font-weight: 900; font-size: clamp(34px, 9vw, 64px); color: var(--cyan);
+  text-shadow: 0 0 16px rgba(99, 221, 255, 0.7), 0 2px 18px rgba(0, 0, 0, 0.8); }
+.over-name { margin: -8px 0 -6px; font-size: 18px; font-weight: 700; color: var(--ink); }
+#solo { display: flex; flex-direction: column; gap: 18px; }
+#rank { display: flex; flex-direction: column; gap: 8px; }
+.rk { display: grid; grid-template-columns: 30px minmax(0, 1fr) auto; align-items: center; gap: 10px; text-align: left;
+  background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 10px 14px; }
+.rk .pos { font-size: 18px; font-weight: 900; color: var(--muted); }
+.rk .nm { font-size: 16px; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rk .nm small { display: block; font-size: 12px; font-weight: 500; color: var(--muted); }
+.rk .sc { font-size: 28px; font-weight: 900; font-variant-numeric: tabular-nums; }
+.rk.win { border-color: var(--amber); background: rgba(255, 198, 92, 0.1); }
+.rk.win .pos, .rk.win .sc { color: var(--amber); }
+.best-line { margin: 0; font-size: 14px; color: var(--muted); }
+.best-line b { color: var(--ink); font-variant-numeric: tabular-nums; }
+
 @media (max-width: 520px) {
   .fr .mk { height: 18px; }
   .fr .mk span { font-size: 11px; }
@@ -165,6 +201,7 @@ body.paused #msg { animation-play-state: paused; }
 <div id="hud">
   <div id="top">
     <div id="board" aria-label="計分表"></div>
+    <div id="players" aria-label="玩家分數" hidden></div>
     <div id="meta">
       <div class="brandwrap">
         <button class="btn" id="pausebtn" aria-label="暫停遊戲"><svg viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="4" width="4" height="16" rx="1"/><rect x="14" y="4" width="4" height="16" rx="1"/></svg></button>
@@ -199,6 +236,13 @@ body.paused #msg { animation-play-state: paused; }
       <dt>站位</dt><dd>用 ← → 鍵或兩側按鈕在犯規線後左右移動。</dd>
       <dt>暫停</dt><dd>按左上角的暫停鈕，或按 Esc／P。</dd>
     </dl>
+    <div class="setup">
+      <div class="setup-label" id="seg-label">玩家人數與名字</div>
+      <div class="seg" id="seg" role="radiogroup" aria-labelledby="seg-label">
+        <button role="radio" data-n="1">1 人</button><button role="radio" data-n="2">2 人</button><button role="radio" data-n="3">3 人</button><button role="radio" data-n="4">4 人</button>
+      </div>
+      <div id="names"></div>
+    </div>
     <button class="cta" id="go">開始打球</button>
     <div id="loading"><span class="ver"></span> · 標準十格計分 · 60 呎球道</div>
   </div>
@@ -207,12 +251,17 @@ body.paused #msg { animation-play-state: paused; }
 <div class="overlay" id="over" hidden>
   <div class="card">
     <p class="over-title">比賽結束</p>
-    <div class="final" id="final">0</div>
-    <div class="stats">
-      <div><b id="st-strike">0</b>全倒</div>
-      <div><b id="st-spare">0</b>補中</div>
-      <div><b id="st-best">0</b>最佳分數</div>
+    <div id="solo">
+      <p class="over-name" id="over-name"></p>
+      <div class="final" id="final">0</div>
+      <div class="stats">
+        <div><b id="st-strike">0</b>全倒</div>
+        <div><b id="st-spare">0</b>補中</div>
+        <div><b id="st-best">0</b>最佳分數</div>
+      </div>
     </div>
+    <div id="rank" hidden></div>
+    <p class="best-line" id="best-line" hidden>最佳分數紀錄 <b id="best-multi">0</b></p>
     <button class="cta" id="again">再打一局</button>
   </div>
 </div>
@@ -267,7 +316,7 @@ const ROW = SP * Math.sin(Math.PI / 3);
 const MAXX = W / 2 - R - 0.02;
 
 // Game version: bump together with CHANGELOG.md and the git tag on every push
-const GAME_VERSION = '1.1.0';
+const GAME_VERSION = '1.2.0';
 document.querySelectorAll('.ver').forEach((el) => { el.textContent = `v${GAME_VERSION}`; });
 
 try { await Promise.race([document.fonts.load('100px Monoton'), new Promise((r) => setTimeout(r, 1500))]); } catch (e) {}
@@ -626,7 +675,24 @@ function setMuted(m) {
 $('#mute').addEventListener('click', () => setMuted(!muted));
 
 // ---------------- Scoring ----------------
+// frames/stats always point at the current player's own sheet; frame is shared (everyone bowls frame N before frame N+1)
 let frames, frame, ballNo, stats, standingBefore = 10;
+let players = [], cur = 0;
+let setup = { n: 1, names: ['', '', '', ''] };
+try {
+  const s = JSON.parse(localStorage.getItem('lane7-players'));
+  if (s && s.n >= 1 && s.n <= 4 && Array.isArray(s.names)) setup = { n: s.n, names: [0, 1, 2, 3].map((i) => String(s.names[i] ?? '').slice(0, 8)) };
+} catch (e) {}
+function usePlayer(i) {
+  cur = i; frames = players[i].frames; stats = players[i].stats; px = pxRaw = players[i].px;
+}
+function buildPlayers() {
+  players = Array.from({ length: setup.n }, (_, i) => ({
+    name: setup.names[i].trim() || `User${i + 1}`,
+    frames: Array.from({ length: 10 }, () => []), stats: { strike: 0, spare: 0 }, px: 0,
+  }));
+  frame = 0; ballNo = 0; usePlayer(0);
+}
 function marksFor(f, fr) {
   const m = (v) => (v === 0 ? '-' : String(v));
   if (f < 9) {
@@ -639,10 +705,10 @@ function marksFor(f, fr) {
   if (c !== undefined) out[2] = (a === 10 && b !== 10) ? (b + c === 10 ? '/' : m(c)) : (c === 10 ? 'X' : m(c));
   return out;
 }
-function totals() {
-  const flat = frames.flat(); let idx = 0, run = 0, ok = true; const out = [];
+function totals(fs = frames) {
+  const flat = fs.flat(); let idx = 0, run = 0, ok = true; const out = [];
   for (let f = 0; f < 10; f++) {
-    const fr = frames[f]; let val = null;
+    const fr = fs[f]; let val = null;
     if (ok && fr.length) {
       if (f < 9) {
         if (fr[0] === 10) { if (flat[idx + 1] !== undefined && flat[idx + 2] !== undefined) val = 10 + flat[idx + 1] + flat[idx + 2]; }
@@ -671,7 +737,18 @@ function renderBoard() {
     el.classList.toggle('cur', f === frame && state !== 'over');
   });
   $('#tot').textContent = run;
-  $('#status').textContent = state === 'over' ? '比賽結束' : `第 ${frame + 1} 格 · 第 ${ballNo + 1} 球`;
+  const multi = players.length > 1;
+  $('#status').textContent = state === 'over' ? '比賽結束' : `${multi ? players[cur].name + ' · ' : ''}第 ${frame + 1} 格 · 第 ${ballNo + 1} 球`;
+  const pl = $('#players');
+  pl.hidden = !multi;
+  if (multi) {
+    pl.replaceChildren(...players.map((p, i) => {
+      const s = document.createElement('span'), b = document.createElement('b');
+      s.className = i === cur && state !== 'over' ? 'on' : '';
+      s.textContent = p.name; b.textContent = totals(p.frames).run; s.appendChild(b);
+      return s;
+    }));
+  }
 }
 const rackEl = $('#rack');
 [[7, 8, 9, 10], [4, 5, 6], [2, 3], [1]].forEach((row) => {
@@ -704,10 +781,12 @@ const relFrom = new THREE.Vector3(), relTo = new THREE.Vector3();
 let best = 0; try { best = +localStorage.getItem('lane7-best') || 0; } catch (e) {}
 
 function newGame() {
-  frames = Array.from({ length: 10 }, () => []); frame = 0; ballNo = 0; stats = { strike: 0, spare: 0 };
+  buildPlayers();
   if (ballInWorld) { world.removeBody(ballBody); ballInWorld = false; }
-  rackPins(); state = 'aim'; px = pxRaw = 0; renderBoard();
+  rackPins(); state = 'aim'; renderBoard();
+  if (players.length > 1) announceTurn();
 }
+function announceTurn() { showMsg(`輪到 ${players[cur].name}`, `第 ${frame + 1} 格`, 'turn'); }
 
 function analyze(pts) {
   const a = pts[0], e = pts[pts.length - 1];
@@ -756,6 +835,7 @@ canvas.addEventListener('contextmenu', (e) => e.preventDefault());
 
 let moveDir = 0; const keys = {};
 addEventListener('keydown', (e) => {
+  if (e.target instanceof HTMLInputElement) return; // typing a player name
   if (e.key === 'Escape' || e.key === 'p' || e.key === 'P') { if (!e.repeat) setPaused(!paused); return; }
   if (paused) return;
   keys[e.key] = true;
@@ -812,20 +892,73 @@ function afterResult() {
   const { nextFrame, resetRack, over } = pending;
   if (ballInWorld) { world.removeBody(ballBody); ballInWorld = false; }
   blob.visible = false;
-  if (over) {
-    state = 'over'; renderBoard();
-    const score = totals().run;
-    if (score > best) { best = score; try { localStorage.setItem('lane7-best', String(best)); } catch (e) {} }
-    $('#final').textContent = score; $('#st-strike').textContent = stats.strike; $('#st-spare').textContent = stats.spare; $('#st-best').textContent = best;
-    $('#over').hidden = false;
-    return;
-  }
-  if (nextFrame) { frame++; ballNo = 0; rackPins(); }
-  else { ballNo++; if (resetRack) rackPins(); else sweepPins(); }
+  if (over || nextFrame) {
+    // this player's frame is done: pass the lane to the next player, or move everyone to the next frame
+    players[cur].px = px;
+    const last = cur === players.length - 1;
+    if (over && last) { gameOver(); return; }
+    if (last) frame++;
+    usePlayer(last ? 0 : cur + 1);
+    ballNo = 0; rackPins();
+    if (players.length > 1) announceTurn();
+  } else { ballNo++; if (resetRack) rackPins(); else sweepPins(); }
   state = 'aim'; renderBoard();
 }
 
-$('#go').addEventListener('click', () => { initAudio(); $('#start').hidden = true; newGame(); });
+function gameOver() {
+  state = 'over'; renderBoard();
+  const scores = players.map((p) => totals(p.frames).run);
+  const top = Math.max(...scores);
+  if (top > best) { best = top; try { localStorage.setItem('lane7-best', String(best)); } catch (e) {} }
+  const multi = players.length > 1;
+  $('#solo').hidden = multi; $('#rank').hidden = !multi; $('#best-line').hidden = !multi;
+  if (!multi) {
+    $('#over-name').textContent = players[0].name;
+    $('#final').textContent = scores[0]; $('#st-strike').textContent = stats.strike; $('#st-spare').textContent = stats.spare; $('#st-best').textContent = best;
+  } else {
+    const order = players.map((p, i) => i).sort((a, b) => scores[b] - scores[a] || a - b);
+    $('#rank').replaceChildren(...order.map((i) => {
+      const p = players[i], pos = 1 + scores.filter((s) => s > scores[i]).length; // ties share a place
+      const row = document.createElement('div'); row.className = 'rk' + (pos === 1 ? ' win' : '');
+      const a = document.createElement('div'); a.className = 'pos'; a.textContent = pos;
+      const nm = document.createElement('div'); nm.className = 'nm'; nm.textContent = p.name;
+      const sm = document.createElement('small'); sm.textContent = `${pos === 1 ? '冠軍 · ' : ''}全倒 ${p.stats.strike} · 補中 ${p.stats.spare}`; nm.appendChild(sm);
+      const sc = document.createElement('div'); sc.className = 'sc'; sc.textContent = scores[i];
+      row.append(a, nm, sc);
+      return row;
+    }));
+    $('#best-multi').textContent = best;
+  }
+  $('#over').hidden = false;
+}
+
+// ---------------- Player setup (start screen) ----------------
+const segEl = $('#seg'), namesEl = $('#names');
+function renderSetup() {
+  segEl.querySelectorAll('button').forEach((b) => b.setAttribute('aria-checked', String(+b.dataset.n === setup.n)));
+  namesEl.replaceChildren(...Array.from({ length: setup.n }, (_, i) => {
+    const inp = document.createElement('input');
+    inp.type = 'text'; inp.maxLength = 8; inp.autocomplete = 'off'; inp.enterKeyHint = 'go';
+    inp.placeholder = `User${i + 1}`; inp.value = setup.names[i];
+    inp.setAttribute('aria-label', `玩家 ${i + 1} 的名字（留空就叫 User${i + 1}）`);
+    inp.addEventListener('input', () => { setup.names[i] = inp.value; });
+    inp.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); startGame(); } });
+    return inp;
+  }));
+}
+segEl.addEventListener('click', (e) => {
+  const b = e.target.closest('button[data-n]'); if (!b) return;
+  setup.n = +b.dataset.n; renderSetup();
+});
+function startGame() {
+  try { localStorage.setItem('lane7-players', JSON.stringify(setup)); } catch (e) {}
+  initAudio(); $('#start').hidden = true;
+  if (document.activeElement) document.activeElement.blur();
+  newGame();
+}
+renderSetup();
+
+$('#go').addEventListener('click', startGame);
 $('#again').addEventListener('click', () => { $('#over').hidden = true; newGame(); });
 
 // ---------------- Pause menu ----------------
@@ -857,7 +990,7 @@ function setPaused(p) {
     drag = null; guide.visible = false; moveDir = 0;
     for (const k in keys) keys[k] = false;
     disarm();
-    $('#pause-sub').textContent = `第 ${frame + 1} 格 · 第 ${ballNo + 1} 球 · 目前 ${totals().run} 分`;
+    $('#pause-sub').textContent = `${players.length > 1 ? players[cur].name + ' · ' : ''}第 ${frame + 1} 格 · 第 ${ballNo + 1} 球 · 目前 ${totals().run} 分`;
     if (ac) ac.suspend();
     $('#resume').focus();
   } else if (ac) ac.resume();
@@ -875,8 +1008,8 @@ confirmButton('quit', '再按一次回到首頁（這局不計分）', () => {
   setPaused(false);
   if (ballInWorld) { world.removeBody(ballBody); ballInWorld = false; }
   blob.visible = false; guide.visible = false;
-  frames = Array.from({ length: 10 }, () => []); frame = 0; ballNo = 0; stats = { strike: 0, spare: 0 };
-  state = 'intro'; px = pxRaw = 0;
+  buildPlayers();
+  state = 'intro';
   rackPins(); renderBoard();
   $('#start').hidden = false; $('#go').focus();
 });
@@ -886,7 +1019,7 @@ document.addEventListener('visibilitychange', () => { if (document.hidden) setPa
 const camPos = new THREE.Vector3(0, 1.42, 1.7), camLook = new THREE.Vector3(0, 0.15, -18.6);
 const wantPos = new THREE.Vector3(), wantLook = new THREE.Vector3(), held = new THREE.Vector3();
 const spinAxis = new THREE.Vector3(1, 0, 0);
-frames = Array.from({ length: 10 }, () => []); frame = 0; ballNo = 0; stats = { strike: 0, spare: 0 };
+buildPlayers();
 rackPins(); renderBoard();
 
 const clock = new THREE.Clock();

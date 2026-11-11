@@ -61,9 +61,10 @@ node -e "const h=require('http'),f=require('fs');h.createServer((q,s)=>{f.readFi
 - 物理調校：`cm(...)` 接觸材質（摩擦、彈性）、`preStep` 中的曲球側向力
 - 滑動判定：`analyze()` 把滑動軌跡換算成球速、角度、旋轉
 - 計分：`marksFor()`、`totals()`、`evaluate()`
+- 多人輪流：`buildPlayers()`、`usePlayer()`、`afterResult()`（換人／換格）、`gameOver()`（排行）
 
 ## 可以優化的方向
 
 - 撞瓶效果（目前正中頭瓶多半只倒 5–6 瓶，打進 1-3 號瓶縫才容易全倒）
 - 滑動手感（球速與旋轉的換算比例）
-- 球的重量選擇、多人輪流、音效與特效
+- 球的重量選擇、音效與特效
