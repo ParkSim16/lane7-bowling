@@ -1,3 +1,9 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<!-- lay the page out at the phone's own width (without this a phone draws it as a 980px desktop page, shrunk) -->
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Park 保齡球</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -355,6 +361,7 @@ body.paused #banner .band { animation-play-state: paused; }
       <button class="ghost" id="sound">音效：開</button>
       <button class="ghost" id="music">背景音樂：開</button>
       <button class="ghost" id="quality">畫質：高</button>
+      <button class="ghost" id="fsbtn" hidden>全螢幕：開</button>
       <button class="ghost" id="quit">結束遊戲</button>
       <details class="rules">
         <summary>玩法說明</summary>
@@ -407,7 +414,7 @@ const ROW = SP * Math.sin(Math.PI / 3);
 const MAXX = W / 2 - R - 0.02;
 
 // Game version: bump together with CHANGELOG.md and the git tag on every push
-const GAME_VERSION = '1.9.0';
+const GAME_VERSION = '1.9.1';
 document.querySelectorAll('.ver').forEach((el) => { el.textContent = `v${GAME_VERSION}`; });
 
 try { await Promise.race([Promise.all([document.fonts.load('100px Monoton'), document.fonts.load('44px "Tilt Neon"')]), new Promise((r) => setTimeout(r, 1500))]); } catch (e) {}
@@ -2287,6 +2294,39 @@ $('#pausebtn').addEventListener('click', () => setPaused(true));
 $('#resume').addEventListener('click', () => setPaused(false));
 $('#sound').addEventListener('click', () => setMuted(!muted));
 $('#music').addEventListener('click', () => setMusic(!musicOn));
+
+// ---- full screen on phones and tablets ----
+// Browsers only allow full screen from a tap, so every tap while not full screen asks for it again (after the
+// player swiped out of it, say). The pause menu can turn this off; the choice is remembered.
+// Computers never switch by themselves, and iPhones have no full screen for web pages, so they get no button.
+const fsRoot = document.documentElement;
+const fsCan = matchMedia('(pointer: coarse)').matches && !!(fsRoot.requestFullscreen || fsRoot.webkitRequestFullscreen);
+const isFull = () => !!(document.fullscreenElement || document.webkitFullscreenElement);
+let fsOn = true;
+try { fsOn = localStorage.getItem('lane7-fullscreen') !== 'off'; } catch (e) {}
+function enterFull() {
+  if (isFull()) return;
+  try {
+    const p = fsRoot.requestFullscreen ? fsRoot.requestFullscreen({ navigationUI: 'hide' }) : fsRoot.webkitRequestFullscreen();
+    p?.catch?.(() => {});
+  } catch (e) {}
+}
+function exitFull() {
+  if (!isFull()) return;
+  try { const p = document.exitFullscreen ? document.exitFullscreen() : document.webkitExitFullscreen(); p?.catch?.(() => {}); } catch (e) {}
+}
+function setFull(on) {
+  fsOn = on;
+  try { localStorage.setItem('lane7-fullscreen', on ? 'on' : 'off'); } catch (e) {}
+  $('#fsbtn').textContent = `全螢幕：${on ? '開' : '關'}`;
+  if (on) enterFull(); else exitFull();
+}
+if (fsCan) {
+  $('#fsbtn').hidden = false; $('#fsbtn').textContent = `全螢幕：${fsOn ? '開' : '關'}`;
+  // a finger lifting off the screen counts as a tap for the browser (a finger going down does not)
+  document.addEventListener('pointerup', (e) => { if (fsOn && e.target.id !== 'fsbtn') enterFull(); }, true);
+  $('#fsbtn').addEventListener('click', () => setFull(!fsOn));
+}
 $('#quality').addEventListener('click', () => { const i = QUALITY_ORDER.indexOf(quality); setQuality(QUALITY_ORDER[(i + 1) % QUALITY_ORDER.length], true); pausedDrawn = false; });
 confirmButton('restart', '再按一次確定重新開始', () => {
   msgEl.className = ''; $('#info').style.opacity = 0;
