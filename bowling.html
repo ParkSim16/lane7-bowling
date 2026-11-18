@@ -74,6 +74,9 @@ body {
 #controls { display: flex; align-items: center; width: 100%; }
 #controls .spacer { display: flex; justify-content: flex-start; min-width: 0; }
 #left, #right { position: fixed; top: 52%; transform: translateY(-50%); }
+/* the stance and curve buttons only show while aiming (#hud gets .aiming); otherwise they fade out of the way */
+#left, #right, #spin { transition: opacity 0.25s, visibility 0s; }
+#hud:not(.aiming) #left, #hud:not(.aiming) #right, #hud:not(.aiming) #spin { opacity: 0; visibility: hidden; pointer-events: none; transition: opacity 0.25s, visibility 0s 0.25s; }
 #left { left: max(12px, env(safe-area-inset-left, 0px)); }
 #right { right: max(12px, env(safe-area-inset-right, 0px)); }
 /* spin picker: ↶ [left 50% / straight / right 75%] ↷ */
@@ -414,7 +417,7 @@ const ROW = SP * Math.sin(Math.PI / 3);
 const MAXX = W / 2 - R - 0.02;
 
 // Game version: bump together with CHANGELOG.md and the git tag on every push
-const GAME_VERSION = '1.9.1';
+const GAME_VERSION = '1.9.2';
 document.querySelectorAll('.ver').forEach((el) => { el.textContent = `v${GAME_VERSION}`; });
 
 try { await Promise.race([Promise.all([document.fonts.load('100px Monoton'), document.fonts.load('44px "Tilt Neon"')]), new Promise((r) => setTimeout(r, 1500))]); } catch (e) {}
@@ -2399,6 +2402,7 @@ function update(dt) {
     px = boardX(boardOf(pxRaw));
   }
   stanceMarker.visible = state === 'aim' || state === 'intro';
+  hudEl.classList.toggle('aiming', state === 'aim');
   stanceMarker.position.x = px;
   // fixed 1/240 s steps, counted here rather than by cannon's own accumulator, so world.time advances exactly
   // like the look-ahead copy's (pins fall asleep by world.time; any drift would make the prediction wrong)
@@ -2504,6 +2508,7 @@ function update(dt) {
   fxMat.uniforms.uScale.value = renderer.domElement.height / (2 * Math.tan(THREE.MathUtils.degToRad(camera.fov) / 2));
 }
 // If the player never picked a quality and the game keeps running slow, step down one level (at most to low).
+const hudEl = $('#hud');
 let aimAmt = 1; // 1 = the narrow aiming view, 0 = the wider view (see VIEW_H / AIM_FOV)
 let perfT = 0, perfFrames = 0, perfSlow = 0, pausedDrawn = false;
 addEventListener('resize', () => { pausedDrawn = false; });
