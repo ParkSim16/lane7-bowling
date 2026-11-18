@@ -74,8 +74,16 @@ body {
 #stance small { color: var(--muted); font-size: 11px; }
 #info { min-height: 20px; font-size: 14px; color: var(--cyan); font-weight: 700; text-shadow: 0 1px 8px rgba(0, 0, 0, 0.9); font-variant-numeric: tabular-nums; transition: opacity 0.4s; }
 #controls { display: flex; align-items: center; gap: 12px; width: min(560px, 100%); }
-#controls .spacer { flex: 1; } /* the lane shows through between the buttons */
-.btn {
+#controls .spacer { flex: 1; display: flex; justify-content: center; min-width: 0; } /* the lane shows through between the buttons */
+/* spin picker: ↶ [left 50% / straight / right 75%] ↷ */
+#spin { pointer-events: auto; display: flex; align-items: center; gap: 2px; background: var(--panel); border: 1px solid var(--line); border-radius: 999px;
+  padding: 3px; backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); }
+#spin button { width: 36px; height: 40px; border: 0; border-radius: 50%; background: transparent; color: var(--ink); display: grid; place-items: center; cursor: pointer; touch-action: manipulation; }
+#spin button:active { background: rgba(255, 79, 123, 0.25); }
+#spin button:focus-visible { outline: 2px solid var(--amber); outline-offset: 1px; }
+#spin svg { width: 20px; height: 20px; }
+#spinV { min-width: 5.2em; text-align: center; font-size: 14px; font-weight: 700; font-variant-numeric: tabular-nums; color: var(--ink); white-space: nowrap; }
+#spinV.on { color: var(--amber); }.btn {
   pointer-events: auto; width: 52px; height: 52px; flex: 0 0 auto; border-radius: 50%;
   border: 1px solid var(--line); background: var(--panel); color: var(--ink);
   display: grid; place-items: center; cursor: pointer; touch-action: none;
@@ -269,7 +277,13 @@ body.paused #banner .band { animation-play-state: paused; }
     <div id="info"></div>
     <div id="controls">
       <button class="btn" id="left" aria-label="往左移動站位"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg></button>
-      <div class="spacer"></div>
+      <div class="spacer">
+        <div id="spin" role="group" aria-label="旋轉">
+          <button id="spinL" aria-label="往左曲（Q）"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M17 19C9 19 6 13 7 6"/><path d="M3 9l4-4 4 4"/></svg></button>
+          <span id="spinV" aria-live="polite">直球</span>
+          <button id="spinR" aria-label="往右曲（E）"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M7 19c8 0 11-6 10-13"/><path d="M21 9l-4-4-4 4"/></svg></button>
+        </div>
+      </div>
       <button class="btn" id="right" aria-label="往右移動站位"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5l7 7-7 7"/></svg></button>
       <button class="btn" id="mute" aria-label="切換音效"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9h4l5-4v14l-5-4H4z"/><path id="wave" d="M16.5 8.5a5 5 0 0 1 0 7M19 6a8.5 8.5 0 0 1 0 12"/><path id="cross" d="M17 9l5 6M22 9l-5 6" style="display:none"/></svg></button>
     </div>
@@ -285,9 +299,9 @@ body.paused #banner .band { animation-play-state: paused; }
     <h1>Park</h1>
     <p class="tag">第一人稱保齡球</p>
     <dl class="how">
-      <dt>丟球</dt><dd>按住畫面往上滑，放開就出手。滑得越快，球速越快。</dd>
-      <dt>瞄準</dt><dd>往左或右斜著滑，球道上會出現瞄準線。</dd>
-      <dt>曲球</dt><dd>滑出一道弧線，球會在球道後段轉彎。</dd>
+      <dt>瞄準</dt><dd>往左或右斜著滑，球就往那個方向走。滑的時候球道上會即時出現球會走的路線，▼ 是會打到的地方。</dd>
+      <dt>曲球</dt><dd>按下方的 ↶ ↷ 選左曲或右曲，每按一下 5%，按住可以連續調（也可按 Q／E）。</dd>
+      <dt>丟球</dt><dd>按住畫面往上滑，放開就出手，滑得越快球越快。旋轉只看 ↶ ↷ 的設定，滑的弧度不會讓球轉彎。</dd>
       <dt>站位</dt><dd>用 ← → 鍵或兩側按鈕在犯規線後左右移動。</dd>
       <dt>暫停</dt><dd>按左上角的暫停鈕，或按 Esc／P。</dd>
     </dl>
@@ -336,8 +350,9 @@ body.paused #banner .band { animation-play-state: paused; }
         <summary>玩法說明</summary>
         <dl class="how">
           <dt>丟球</dt><dd>按住畫面往上滑，放開就出手。滑得越快，球速越快。</dd>
-          <dt>瞄準</dt><dd>往左或右斜著滑，球道上會出現瞄準線。</dd>
-          <dt>曲球</dt><dd>滑出一道弧線，球會在球道後段轉彎。</dd>
+          <dt>瞄準</dt><dd>往左或右斜著滑，球就往那個方向走。滑的時候球道上會即時出現球會走的路線，▼ 是會打到的地方。</dd>
+          <dt>曲球</dt><dd>按下方的 ↶ ↷ 選左曲或右曲，每按一下 5%，按住可以連續調（也可按 Q／E）。</dd>
+          <dt>丟球</dt><dd>往上滑出手，滑得越快球越快；斜著滑就斜著丟。</dd>
           <dt>站位</dt><dd>用 ← → 鍵或兩側按鈕在犯規線後左右移動。</dd>
           <dt>慢動作</dt><dd>會全倒或補中的那一球，快撞到瓶子時會放慢，撞上去的瞬間恢復全速。</dd>
           <dt>快轉</dt><dd>置瓶機在整理球瓶、或過場動畫播放時，點一下畫面（或按空白鍵）可以快轉。</dd>
@@ -382,7 +397,7 @@ const ROW = SP * Math.sin(Math.PI / 3);
 const MAXX = W / 2 - R - 0.02;
 
 // Game version: bump together with CHANGELOG.md and the git tag on every push
-const GAME_VERSION = '1.7.0';
+const GAME_VERSION = '1.8.0';
 document.querySelectorAll('.ver').forEach((el) => { el.textContent = `v${GAME_VERSION}`; });
 
 try { await Promise.race([document.fonts.load('100px Monoton'), new Promise((r) => setTimeout(r, 1500))]); } catch (e) {}
@@ -1054,34 +1069,41 @@ function rackPins() {
   updateRack();
 }
 
-// hook: the back end of the lane is dry, so side spin bites there
-function hookForce(ball, spin) {
+// hook: the back end of the lane is dry, so side spin bites there.
+// The push grows with the square of the launch speed: a slower ball spends longer in the dry part, so with a fixed
+// push it would bend much more. Scaled like this the bend at the pins depends on the spin setting only, not on how
+// hard the ball was swiped (HOOK_REF_SPEED is the speed at which the push is the original 5.2 N per unit of spin).
+const HOOK_REF_SPEED = 7.5;
+function hookForce(ball, spin, speed) {
   const p = ball.position;
   if (Math.abs(p.x) < W / 2 && p.y > 0.05 && p.z < -5 && p.z > HEAD_Z + 0.2) {
-    const bite = clamp((-p.z - 5) / 6, 0, 1);
-    ball.applyForce(new CANNON.Vec3(spin * 5.2 * bite, 0, 0));
+    const bite = clamp((-p.z - 5) / 6, 0, 1), k = (speed / HOOK_REF_SPEED) ** 2;
+    ball.applyForce(new CANNON.Vec3(spin * 5.2 * k * bite, 0, 0));
   }
 }
-world.addEventListener('preStep', () => { if (ballInWorld && shot) hookForce(ballBody, shot.spin); });
+world.addEventListener('preStep', () => { if (ballInWorld && shot) hookForce(ballBody, shot.spin, shot.speed); });
 
 // ---- aim preview: where this swipe would send the ball ----
 // A small copy of the lane (only the fixed bodies, no pins) with its own ball. While the player swipes, that ball
 // is rolled down it with exactly the same launch and hook as a real throw, and its path becomes the aim guide.
-let aimWorld = null, aimBall = null, aimSpin = 0;
+let aimWorld = null, aimBall = null, aimShot = null; // aimShot: the shot being previewed (spin and speed for the hook)
 const aimPath = [];
 function launchState(body, s) { // the ball's state the moment it leaves the hand (used by launch() too)
   body.position.set(px, R, -0.3);
-  body.velocity.set(Math.sin(s.ang) * s.speed, 0, -Math.cos(s.ang) * s.speed);
-  body.angularVelocity.set(-s.speed / R * 0.7, s.spin * 14, 0);
+  const vx = Math.sin(s.ang) * s.speed, vz = -Math.cos(s.ang) * s.speed;
+  body.velocity.set(vx, 0, vz);
+  // forward roll about the axis across the direction of travel (not just across the lane), so friction slows
+  // the skid along the line instead of eating the sideways part of an angled shot
+  body.angularVelocity.set(vz / R * 0.7, s.spin * 14, -vx / R * 0.7);
 }
 function previewPath(s) {
   if (!aimWorld) {
     aimWorld = makeWorld();
     for (const b of world.bodies) if (b.type === CANNON.Body.STATIC && b.make) aimWorld.addBody(b.make());
     aimBall = makeBall(); aimWorld.addBody(aimBall);
-    aimWorld.addEventListener('preStep', () => hookForce(aimBall, aimSpin));
+    aimWorld.addEventListener('preStep', () => hookForce(aimBall, aimShot.spin, aimShot.speed));
   }
-  aimSpin = s.spin;
+  aimShot = s;
   launchState(aimBall, s); aimBall.quaternion.set(0, 0, 0, 1);
   aimPath.length = 0; aimPath.push({ x: px, z: -0.3 });
   let gutter = false;
@@ -1140,7 +1162,7 @@ function predictShot() {
     w.addBody(c); copies.set(b, c);
   }
   const ball = copies.get(ballBody), pinBodies = pins.filter((p) => p.inWorld).map((p) => copies.get(p.body));
-  w.addEventListener('preStep', () => hookForce(ball, shot.spin));
+  w.addEventListener('preStep', () => hookForce(ball, shot.spin, shot.speed));
   const assist = makePinAssist(pinBodies); w.addEventListener('postStep', assist); // same kicks as the real world
   pred = { w, ball, pinBodies, t: 0, settleT: null, done: false, clear: false };
 }
@@ -1651,11 +1673,13 @@ try {
 } catch (e) {}
 function usePlayer(i) {
   cur = i; frames = players[i].frames; stats = players[i].stats; px = pxRaw = players[i].px;
+  renderSpin();
 }
 function buildPlayers() {
   players = Array.from({ length: setup.n }, (_, i) => ({
     name: setup.names[i].trim() || `User${i + 1}`,
     frames: Array.from({ length: 10 }, () => []), stats: { strike: 0, spare: 0 }, px: 0, streak: 0,
+    spinLvl: 0, // each player keeps their own spin setting
   }));
   frame = 0; ballNo = 0; usePlayer(0);
 }
@@ -1952,59 +1976,106 @@ function newGame() {
   startCine('start'); renderBoard();
 }
 
-function analyze(pts) {
-  const a = pts[0], e = pts[pts.length - 1];
-  const dy = a.y - e.y, dx = e.x - a.x;
-  // aim: the swipe's tilt from straight up. A few degrees of hand wobble count as straight (dead zone), past that
-  // the ball turns gently — about 10 boards at the pins for a 10° swipe, the gutter only for a clearly slanted one.
-  const tilt = Math.atan2(dx, Math.max(dy, 1)), AIM_DEAD = 0.04, AIM_GAIN = 0.11;
-  const ang = clamp(Math.sign(tilt) * Math.max(0, Math.abs(tilt) - AIM_DEAD) * AIM_GAIN, -0.05, 0.05);
-  let k = pts.length - 1; while (k > 0 && e.t - pts[k - 1].t < 110) k--;
-  const p = pts[k], dtm = Math.max((e.t - p.t) / 1000, 0.016);
-  const vn = Math.max(0, (p.y - e.y) / dtm) / innerHeight;
-  const speed = clamp(3.4 + vn * 1.5, 3.6, 10.8);
-  let spin = 0; const n = pts.length;
-  if (n >= 6 && dy > 60) {
-    const b = pts[Math.floor(n * 0.45)], c = pts[Math.floor(n * 0.55)];
-    const a1 = Math.atan2(b.x - a.x, a.y - b.y), a2 = Math.atan2(e.x - c.x, c.y - e.y);
-    spin = clamp((a2 - a1) / 0.8, -1, 1); if (Math.abs(spin) < 0.15) spin = 0;
-  }
-  return { dy, ang, speed, spin };
+// ---- aiming and throwing ----
+//  - the swipe up throws: its speed is the ball speed, its slant is the direction
+//  - spin comes only from ↶ ↷ (or Q / E), in 5% steps (hold a button to keep stepping) — never from the swipe, because a thumb swipe always
+//    arcs a little and that used to put curve on a ball set to 直球 (and bending the swipe also changed the aim)
+// The path appears during the swipe up, live with it (with spin it bends).
+const SPIN_STEP = 0.05, SPIN_LVLS = 20;
+const baseSpin = () => players[cur].spinLvl * SPIN_STEP;
+function setSpin(lvl) { players[cur].spinLvl = clamp(lvl, -SPIN_LVLS, SPIN_LVLS); renderSpin(); }
+const spinLabel = (spin) => (spin === 0 ? '直球' : `${spin < 0 ? '左' : '右'}曲 ${Math.round(Math.abs(spin) * 100)}%`);
+function renderSpin() {
+  if (!players[cur]) return;
+  const v = $('#spinV'), s = baseSpin(); v.textContent = spinLabel(s); v.classList.toggle('on', s !== 0);
+}
+// one step per tap; hold the button and it keeps stepping (after a short pause), so 0 → 100% is a quick hold
+for (const [id, d] of [['#spinL', -1], ['#spinR', 1]]) {
+  const b = $(id); let hold = null;
+  const stop = () => { clearTimeout(hold); hold = null; };
+  const repeat = (delay) => { hold = setTimeout(() => { if (!paused) setSpin(players[cur].spinLvl + d); repeat(70); }, delay); };
+  b.addEventListener('pointerdown', (e) => {
+    e.preventDefault(); initAudio(); stop();
+    setSpin(players[cur].spinLvl + d); repeat(380);
+    try { b.setPointerCapture(e.pointerId); } catch (err) {}
+  });
+  ['pointerup', 'pointercancel', 'lostpointercapture'].forEach((ev) => b.addEventListener(ev, stop));
+  b.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setSpin(players[cur].spinLvl + d); } }); // keyboard users
 }
 
-let drag = null;
+// the swipe: speed and direction
+function analyze(pts) {
+  const a = pts[0], e = pts[pts.length - 1];
+  const dy = a.y - e.y;
+  // direction: the slant of the swipe's main part — a line fitted through its first 80% of upward travel. The last
+  // bit is left out because a thumb tends to flick sideways as it lifts off, which used to swing the throw away from
+  // what the guide had shown a moment before.
+  const cutY = a.y - Math.max(dy, 0) * 0.8;
+  const body = pts.filter((p) => p.y >= cutY);
+  let slope = (e.x - a.x) / Math.max(dy, 1);
+  if (body.length >= 3) { // least squares x = slope * up + c, with up = how far above the start
+    let su = 0, sx = 0, suu = 0, sux = 0;
+    for (const p of body) { const u = a.y - p.y; su += u; sx += p.x; suu += u * u; sux += u * p.x; }
+    const n = body.length, den = n * suu - su * su;
+    if (den > 1e-6) slope = (n * sux - su * sx) / den;
+  }
+  // A couple of degrees of hand wobble count as straight (dead zone); past that the ball turns gently —
+  // about 10 boards at the pins for a 10° slant, the gutter only when clearly slanted.
+  const tilt = Math.atan(slope), AIM_DEAD = 0.04, AIM_GAIN = 0.11;
+  const ang = clamp(Math.sign(tilt) * Math.max(0, Math.abs(tilt) - AIM_DEAD) * AIM_GAIN, -0.05, 0.05);
+  // speed: the fastest ~110 ms stretch of the swipe. Not just the last stretch — a thumb slows down as it lets go,
+  // and a slower ball hooks a lot more, so the curve used to come out bigger than the guide had shown.
+  let vmax = 0;
+  for (let j = 1, k = 0; j < pts.length; j++) {
+    while (k < j - 1 && pts[j].t - pts[k + 1].t >= 110) k++;
+    const dtm = Math.max((pts[j].t - pts[k].t) / 1000, 0.016);
+    vmax = Math.max(vmax, (pts[k].y - pts[j].y) / dtm);
+  }
+  const vn = vmax / innerHeight;
+  const speed = clamp(3.4 + vn * 1.5, 3.6, 10.8);
+  return { dy, speed, ang };
+}
+const shotFrom = (s) => ({ speed: s.speed, ang: s.ang, spin: baseSpin() });
+
+let drag = null; // { pts, mode: null | 'throw' (going up) | 'none' (going down), x0 }
 canvas.addEventListener('pointerdown', (e) => {
   if (paused) return;
   if (state === 'reset' || state === 'cine') { ffwd = true; return; } // tap to fast-forward the machine / transition
   if (state !== 'aim') return;
   initAudio();
   try { canvas.setPointerCapture(e.pointerId); } catch (err) {}
-  drag = { pts: [{ x: e.clientX, y: e.clientY, t: performance.now() }] };
+  drag = { pts: [{ x: e.clientX, y: e.clientY, t: performance.now() }], mode: null, x0: e.clientX };
 });
 canvas.addEventListener('pointermove', (e) => {
   if (!drag) return;
   drag.pts.push({ x: e.clientX, y: e.clientY, t: performance.now() });
-  drag.dirty = true; // the guide and the spin readout are redrawn once per frame in update()
+  if (!drag.mode) { // once the finger has moved 14 px: going up is a throw (at any slant), going down is nothing
+    const dx = e.clientX - drag.x0, up = drag.pts[0].y - e.clientY;
+    if (Math.hypot(dx, up) > 14) drag.mode = up > 0 ? 'throw' : 'none';
+  }
+  drag.dirty = true; // the guide and the readout are redrawn once per frame in updateAim()
 });
-const spinLabel = (spin) => (spin === 0 ? '直球' : `${spin < 0 ? '左' : '右'}曲 ${Math.round(Math.abs(spin) * 100)}%`);
+// the path appears only while the ball is being swiped up (not while lining up), and follows the swipe live
 function updateAim() {
-  if (!drag || !drag.dirty || state !== 'aim') return;
+  const swiping = state === 'aim' && drag && drag.mode === 'throw';
+  if (!swiping) { guide.visible = false; return; }
+  if (!drag.dirty) return;
   drag.dirty = false;
-  const s = analyze(drag.pts);
-  guide.visible = s.dy > 20;
-  if (!guide.visible) return;
-  previewPath(s);
-  const el = $('#info'); clearTimeout(infoTimer); el.textContent = spinLabel(s.spin); el.style.opacity = 1; // live while swiping
+  const sh = shotFrom(analyze(drag.pts));
+  previewPath(sh); guide.visible = true; // the shot as it stands
+  const el = $('#info'); clearTimeout(infoTimer); el.textContent = spinLabel(sh.spin); el.style.opacity = 1;
 }
 const endDrag = (e, cancel) => {
   if (!drag) return;
-  const pts = drag.pts; drag = null; guide.visible = false;
+  const { pts, mode } = drag; drag = null;
+  if (mode !== 'throw') return; // a tap or a downward drag: nothing is thrown
   if (cancel || state !== 'aim') { $('#info').style.opacity = 0; return; }
   pts.push({ x: e.clientX, y: e.clientY, t: performance.now() });
   const s = analyze(pts);
   if (s.dy < 50) { flashHint(); return; }
-  shot = s; state = 'release'; tState = 0; relFrom.copy(ballMesh.position); relTo.set(px, R, -0.3);
-  showInfo(`球速 ${Math.round(s.speed * 3.6)} km/h · ${spinLabel(s.spin)}`);
+  shot = shotFrom(s); guide.visible = false;
+  state = 'release'; tState = 0; relFrom.copy(ballMesh.position); relTo.set(px, R, -0.3);
+  showInfo(`球速 ${Math.round(s.speed * 3.6)} km/h · ${spinLabel(shot.spin)}`);
 };
 canvas.addEventListener('pointerup', (e) => endDrag(e, false));
 canvas.addEventListener('pointercancel', (e) => endDrag(e, true));
@@ -2018,6 +2089,10 @@ addEventListener('keydown', (e) => {
   if ((e.key === ' ' || e.key === 'Enter') && (state === 'reset' || state === 'cine')) { ffwd = true; e.preventDefault(); return; }
   keys[e.key] = true;
   if (!e.repeat && state === 'aim') stepQueue += keyDir(e.key);
+  if (state === 'aim' && players[cur]) { // Q / E: spin
+    const k = e.key.toLowerCase();
+    if (k === 'q') setSpin(players[cur].spinLvl - 1); else if (k === 'e') setSpin(players[cur].spinLvl + 1);
+  }
 });
 addEventListener('keyup', (e) => { keys[e.key] = false; });
 for (const [id, d] of [['#left', -1], ['#right', 1]]) {
