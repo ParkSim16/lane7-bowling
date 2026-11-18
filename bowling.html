@@ -2,7 +2,7 @@
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Monoton&family=Noto+Sans+TC:wght@400;500;700;900&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Monoton&family=Tilt+Neon&family=Noto+Sans+TC:wght@400;500;700;900&display=swap">
 <style>
 /* Layout: full-bleed 3D alley; scoresheet pinned top, controls pinned bottom, overlays centered. Single dark "alley at night" look by design. */
 :root {
@@ -16,6 +16,7 @@
   --amber: #ffc65c;
   --cyan: #63ddff;
   --f-display: "Monoton", "Noto Sans TC", system-ui, sans-serif;
+  --f-brand: "Tilt Neon", "Noto Sans TC", system-ui, sans-serif; /* the name "Park": a neon face with real lower case */
   --f-body: "Noto Sans TC", "PingFang TC", "Microsoft JhengHei", system-ui, sans-serif;
 }
 [hidden] { display: none !important; }
@@ -55,35 +56,32 @@ body {
 .fr.total .tv { flex: 1; display: grid; place-items: center; font-size: 22px; font-weight: 900; color: var(--amber); }
 
 #meta { position: relative; display: flex; align-items: center; justify-content: space-between; gap: 12px; }
-/* the status chip sits in the true middle of the screen (whatever the widths left and right), the stance chip
-   right under it; the -13px keeps the status chip level with the pause button and the rack */
-#mid { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -13px); display: flex; flex-direction: column; align-items: center; gap: 6px; }
-/* on a narrow screen the stance chip is wider than the gap between the pause button and the rack: drop it below them */
-@media (max-width: 620px) { #stance { margin-top: 24px; } }
-#brand { font-family: var(--f-display); font-size: 20px; color: var(--neon); text-shadow: 0 0 10px rgba(255, 79, 123, 0.7); letter-spacing: 0.04em; }
-#status { font-size: 13px; color: var(--ink); background: var(--panel); border: 1px solid var(--line); border-radius: 999px; padding: 4px 12px; font-weight: 500; }
 #rack { display: grid; gap: 3px; justify-items: center; background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 6px 9px; }
 #rack .row { display: flex; gap: 5px; }
 #rack i { width: 8px; height: 8px; border-radius: 50%; background: var(--ink); box-shadow: 0 0 6px rgba(255, 255, 255, 0.5); }
 #rack i.down { background: transparent; box-shadow: inset 0 0 0 1px rgba(220, 225, 255, 0.3); }
 
 #bottom { display: flex; flex-direction: column; align-items: center; gap: 10px; }
-#stance { white-space: nowrap; font-size: 13px; font-weight: 500; color: var(--ink); background: var(--panel); border: 1px solid var(--line); border-radius: 999px;
-  padding: 4px 12px; font-variant-numeric: tabular-nums; backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); }
-#stance b { color: var(--cyan); font-weight: 900; }
-#stance small { color: var(--muted); font-size: 11px; }
 #info { min-height: 20px; font-size: 14px; color: var(--cyan); font-weight: 700; text-shadow: 0 1px 8px rgba(0, 0, 0, 0.9); font-variant-numeric: tabular-nums; transition: opacity 0.4s; }
-#controls { display: flex; align-items: center; gap: 12px; width: min(560px, 100%); }
-#controls .spacer { flex: 1; display: flex; justify-content: center; min-width: 0; } /* the lane shows through between the buttons */
+/* the curve control sits in the bottom-left corner, so the middle of the screen is free for the swipe;
+   the stance arrows float at the sides, halfway up, over the neighbouring lanes */
+#controls { display: flex; align-items: center; width: 100%; }
+#controls .spacer { display: flex; justify-content: flex-start; min-width: 0; }
+#left, #right { position: fixed; top: 52%; transform: translateY(-50%); }
+#left { left: max(12px, env(safe-area-inset-left, 0px)); }
+#right { right: max(12px, env(safe-area-inset-right, 0px)); }
 /* spin picker: ↶ [left 50% / straight / right 75%] ↷ */
-#spin { pointer-events: auto; display: flex; align-items: center; gap: 2px; background: var(--panel); border: 1px solid var(--line); border-radius: 999px;
-  padding: 3px; backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); }
-#spin button { width: 36px; height: 40px; border: 0; border-radius: 50%; background: transparent; color: var(--ink); display: grid; place-items: center; cursor: pointer; touch-action: manipulation; }
-#spin button:active { background: rgba(255, 79, 123, 0.25); }
+/* curve control: two round buttons (their own fill and cyan ring) with the plain readout between them */
+#spin { pointer-events: auto; display: flex; align-items: center; gap: 5px; background: var(--panel); border: 1px solid var(--line); border-radius: 999px;
+  padding: 4px; backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); }
+#spin button { width: 30px; height: 30px; border: 1px solid rgba(99, 221, 255, 0.45); border-radius: 50%; background: rgba(99, 221, 255, 0.12);
+  color: var(--cyan); display: grid; place-items: center; cursor: pointer; touch-action: manipulation; padding: 0; }
+#spin button:active { background: rgba(255, 79, 123, 0.3); border-color: var(--neon); color: var(--ink); }
 #spin button:focus-visible { outline: 2px solid var(--amber); outline-offset: 1px; }
-#spin svg { width: 20px; height: 20px; }
-#spinV { min-width: 5.2em; text-align: center; font-size: 14px; font-weight: 700; font-variant-numeric: tabular-nums; color: var(--ink); white-space: nowrap; }
-#spinV.on { color: var(--amber); }.btn {
+#spin svg { width: 16px; height: 16px; }
+#spinV { min-width: 4.6em; text-align: center; font-size: 12px; font-weight: 700; font-variant-numeric: tabular-nums; color: var(--ink); white-space: nowrap; }
+#spinV.on { color: var(--amber); }
+.btn {
   pointer-events: auto; width: 52px; height: 52px; flex: 0 0 auto; border-radius: 50%;
   border: 1px solid var(--line); background: var(--panel); color: var(--ink);
   display: grid; place-items: center; cursor: pointer; touch-action: none;
@@ -92,8 +90,6 @@ body {
 .btn:active { background: rgba(255, 79, 123, 0.25); }
 .btn:focus-visible, .cta:focus-visible { outline: 2px solid var(--amber); outline-offset: 3px; }
 .btn svg { width: 22px; height: 22px; }
-#mute { width: 40px; height: 40px; }
-#mute svg { width: 18px; height: 18px; }
 
 #msg {
   position: fixed; left: 0; right: 0; top: 34%; text-align: center; pointer-events: none;
@@ -121,7 +117,7 @@ body {
   padding-block: calc(env(safe-area-inset-top, 0px) + 16px) calc(env(safe-area-inset-bottom, 0px) + 16px);
 }
 .card { width: min(440px, 100%); margin: auto; display: flex; flex-direction: column; gap: 18px; text-align: center; }
-.card h1 { margin: 0; font-family: var(--f-display); font-weight: 400; font-size: clamp(56px, 18vw, 96px); line-height: 1; color: var(--neon);
+.card h1 { margin: 0; font-family: var(--f-brand); font-weight: 400; font-size: clamp(56px, 18vw, 96px); line-height: 1; color: var(--neon);
   text-shadow: 0 0 16px rgba(255, 79, 123, 0.8), 0 0 50px rgba(255, 79, 123, 0.4); text-wrap: balance; }
 .card .tag { margin: -6px 0 0; font-size: 15px; letter-spacing: 0.3em; color: var(--amber); font-weight: 700; }
 .how { display: grid; grid-template-columns: auto 1fr; gap: 10px 14px; text-align: left; background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 16px 18px; font-size: 14px; line-height: 1.5; }
@@ -139,7 +135,7 @@ body {
 .brandwrap { display: flex; align-items: center; gap: 10px; }
 #pausebtn { width: 40px; height: 40px; }
 #pausebtn svg { width: 16px; height: 16px; }
-.pause-title { margin: 0; font-family: var(--f-display); font-weight: 400; font-size: clamp(44px, 13vw, 72px); line-height: 1; color: var(--cyan);
+.pause-title { margin: 0; font-family: var(--f-brand); font-weight: 400; font-size: clamp(44px, 13vw, 72px); line-height: 1; color: var(--cyan);
   text-shadow: 0 0 16px rgba(99, 221, 255, 0.7), 0 0 44px rgba(99, 221, 255, 0.35); }
 .pause-sub { margin: -6px 0 0; color: var(--muted); font-size: 14px; font-variant-numeric: tabular-nums; }
 .menu { display: flex; flex-direction: column; gap: 10px; width: min(320px, 100%); align-self: center; }
@@ -169,12 +165,31 @@ body.paused #msg { animation-play-state: paused; }
 #names input:only-child { grid-column: 1 / -1; }
 #names input::placeholder { color: var(--muted); }
 #names input:focus-visible { outline: 2px solid var(--amber); outline-offset: 1px; }
-#players { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; }
-#players span { font-size: 12px; font-weight: 500; color: var(--muted); background: var(--panel); border: 1px solid var(--line); border-radius: 999px;
-  padding: 3px 11px; font-variant-numeric: tabular-nums; backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); }
-#players span b { margin-left: 6px; color: var(--ink); }
-#players span.on { color: var(--ink); border-color: var(--cyan); box-shadow: 0 0 10px rgba(99, 221, 255, 0.35); }
-#players span.on b { color: var(--cyan); }
+/* multiplayer scoresheet, like the monitors over a real lane: one compact row per player (name, 10 frames, total).
+   The bowler's row is lit cyan with a ▶, and the frame they are on is lit pink. */
+#mboard { display: grid; grid-template-columns: minmax(62px, 1.4fr) repeat(9, minmax(0, 1fr)) minmax(0, 1.5fr) minmax(0, 1.25fr);
+  background: var(--panel); border: 1px solid var(--line); border-radius: 8px; overflow: hidden; font-variant-numeric: tabular-nums;
+  backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); }
+#mboard > div { min-width: 0; border-right: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+#mboard > .end { border-right: 0; }
+#mboard > .last { border-bottom: 0; }
+#mboard .mh { font-size: 10px; color: var(--muted); text-align: center; padding: 1px 0; letter-spacing: 0.06em; }
+#mboard .mh.cur { color: var(--neon); }
+#mboard .mn { display: flex; align-items: center; gap: 3px; padding: 0 6px; font-size: 12px; font-weight: 500; color: var(--muted);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#mboard .mn i { font-style: normal; font-size: 9px; color: var(--cyan); visibility: hidden; }
+#mboard .mf { display: flex; flex-direction: column; }
+#mboard .mf .mk { display: flex; height: 15px; }
+#mboard .mf .mk span { flex: 1; display: grid; place-items: center; font-size: 10.5px; font-weight: 700; min-width: 0; }
+#mboard .mf .mk span + span { border-left: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+#mboard .mf .mk .x { color: var(--neon); }
+#mboard .mf .mk .sp { color: var(--amber); }
+#mboard .mf .tt { height: 19px; display: grid; place-items: center; font-size: 12.5px; font-weight: 700; }
+#mboard .mt { display: grid; place-items: center; font-size: 15px; font-weight: 900; color: var(--amber); }
+#mboard .on { background: rgba(99, 221, 255, 0.1); box-shadow: inset 0 1px 0 var(--cyan), inset 0 -1px 0 var(--cyan); }
+#mboard .mn.on { color: var(--ink); box-shadow: inset 2px 0 0 var(--cyan), inset 0 1px 0 var(--cyan), inset 0 -1px 0 var(--cyan); }
+#mboard .mn.on i { visibility: visible; }
+#mboard .mf.on.cur { background: rgba(255, 79, 123, 0.2); }
 .over-name { margin: -8px 0 -6px; font-size: 18px; font-weight: 700; color: var(--ink); }
 #solo { display: flex; flex-direction: column; gap: 18px; }
 #rank { display: flex; flex-direction: column; gap: 8px; }
@@ -233,6 +248,7 @@ body.paused #flash, body.paused #msg .big { animation-play-state: paused; }
   100% { transform: translateX(110%); opacity: 1; }
 }
 #over:not([hidden]) { animation: fadein 0.6s ease-out; }
+#home { align-self: center; min-width: 152px; margin-top: -4px; } /* under 再打一局, as wide */
 @keyframes fadein { from { opacity: 0; } to { opacity: 1; } }
 body.paused #banner .band { animation-play-state: paused; }
 
@@ -242,7 +258,6 @@ body.paused #banner .band { animation-play-state: paused; }
   .fr .tt { font-size: 12px; height: 20px; }
   .fr .no { font-size: 9px; }
   .fr.total .tv { font-size: 17px; }
-  #brand { font-size: 16px; }
   #status { font-size: 12px; }
 }
 @media (prefers-reduced-motion: reduce) {
@@ -260,15 +275,10 @@ body.paused #banner .band { animation-play-state: paused; }
 <div id="hud">
   <div id="top">
     <div id="board" aria-label="計分表"></div>
-    <div id="players" aria-label="玩家分數" hidden></div>
+    <div id="mboard" aria-label="多人計分表" hidden></div>
     <div id="meta">
       <div class="brandwrap">
         <button class="btn" id="pausebtn" aria-label="暫停遊戲"><svg viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="4" width="4" height="16" rx="1"/><rect x="14" y="4" width="4" height="16" rx="1"/></svg></button>
-        <div id="brand">Park</div>
-      </div>
-      <div id="mid">
-        <div id="status">第 1 格 · 第 1 球</div>
-        <div id="stance" aria-live="polite">站位 <b>第 20 板</b> <small>(由右數)</small> · 正中央</div>
       </div>
       <div id="rack" aria-label="剩餘球瓶"></div>
     </div>
@@ -279,13 +289,12 @@ body.paused #banner .band { animation-play-state: paused; }
       <button class="btn" id="left" aria-label="往左移動站位"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg></button>
       <div class="spacer">
         <div id="spin" role="group" aria-label="旋轉">
-          <button id="spinL" aria-label="往左曲（Q）"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M17 19C9 19 6 13 7 6"/><path d="M3 9l4-4 4 4"/></svg></button>
+          <button id="spinL" aria-label="往左曲（Q）"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path fill="currentColor" stroke="none" d="M11 22A9 9 0 0 0 10 4.5V9A7 7 0 0 1 11 22Z"/><path fill="currentColor" stroke="none" d="M10 1.8L3.6 6.75L10 11.7Z"/></svg></button>
           <span id="spinV" aria-live="polite">直球</span>
-          <button id="spinR" aria-label="往右曲（E）"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M7 19c8 0 11-6 10-13"/><path d="M21 9l-4-4-4 4"/></svg></button>
+          <button id="spinR" aria-label="往右曲（E）"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path fill="currentColor" stroke="none" d="M13 22A9 9 0 0 1 14 4.5V9A7 7 0 0 0 13 22Z"/><path fill="currentColor" stroke="none" d="M14 1.8L20.4 6.75L14 11.7Z"/></svg></button>
         </div>
       </div>
       <button class="btn" id="right" aria-label="往右移動站位"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5l7 7-7 7"/></svg></button>
-      <button class="btn" id="mute" aria-label="切換音效"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9h4l5-4v14l-5-4H4z"/><path id="wave" d="M16.5 8.5a5 5 0 0 1 0 7M19 6a8.5 8.5 0 0 1 0 12"/><path id="cross" d="M17 9l5 6M22 9l-5 6" style="display:none"/></svg></button>
     </div>
   </div>
 </div>
@@ -332,12 +341,13 @@ body.paused #banner .band { animation-play-state: paused; }
     <div id="rank" hidden></div>
     <p class="best-line" id="best-line" hidden>最佳分數紀錄 <b id="best-multi">0</b></p>
     <button class="cta" id="again">再打一局</button>
+    <button class="ghost" id="home">回首頁</button>
   </div>
 </div>
 
 <div class="overlay" id="pause" hidden role="dialog" aria-modal="true" aria-labelledby="pause-title">
   <div class="card">
-    <h2 class="pause-title" id="pause-title">PAUSED</h2>
+    <h2 class="pause-title" id="pause-title">Park</h2>
     <p class="pause-sub" id="pause-sub">第 1 格 · 第 1 球 · 目前 0 分</p>
     <div class="menu">
       <button class="cta" id="resume">繼續打球</button>
@@ -397,10 +407,10 @@ const ROW = SP * Math.sin(Math.PI / 3);
 const MAXX = W / 2 - R - 0.02;
 
 // Game version: bump together with CHANGELOG.md and the git tag on every push
-const GAME_VERSION = '1.8.0';
+const GAME_VERSION = '1.9.0';
 document.querySelectorAll('.ver').forEach((el) => { el.textContent = `v${GAME_VERSION}`; });
 
-try { await Promise.race([document.fonts.load('100px Monoton'), new Promise((r) => setTimeout(r, 1500))]); } catch (e) {}
+try { await Promise.race([Promise.all([document.fonts.load('100px Monoton'), document.fonts.load('44px "Tilt Neon"')]), new Promise((r) => setTimeout(r, 1500))]); } catch (e) {}
 
 // ---------------- Renderer & scene ----------------
 const canvas = $('#c');
@@ -525,8 +535,8 @@ function maskingTexture(num, main) {
   g.fillStyle = main ? '#ff86a3' : '#c9567a';
   g.font = '170px Monoton, sans-serif'; g.fillText(String(num), c.width / 2, c.height / 2 + 14);
   g.shadowColor = '#ffc65c'; g.shadowBlur = 14; g.fillStyle = main ? '#ffd98f' : '#a88a52';
-  g.font = '44px Monoton, sans-serif';
-  g.fillText('LANE', 120, c.height / 2 + 6); g.fillText('LANE', c.width - 120, c.height / 2 + 6);
+  g.font = '78px "Tilt Neon", sans-serif';
+  g.fillText('Park', 120, c.height / 2 + 6); g.fillText('Park', c.width - 120, c.height / 2 + 6);
   const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = ANISO; return t;
 }
 function pinTexture() {
@@ -1657,10 +1667,8 @@ function playStep(n, t) {
 }
 function setMuted(m) {
   muted = m; if (master) master.gain.value = muted ? 0 : 0.8;
-  $('#wave').style.display = muted ? 'none' : ''; $('#cross').style.display = muted ? '' : 'none';
   $('#sound').textContent = `音效：${muted ? '關' : '開'}`;
 }
-$('#mute').addEventListener('click', () => setMuted(!muted));
 
 // ---------------- Scoring ----------------
 // frames/stats always point at the current player's own sheet; frame is shared (everyone bowls frame N before frame N+1)
@@ -1728,17 +1736,27 @@ function renderBoard() {
   });
   $('#tot').textContent = run;
   const multi = players.length > 1;
-  $('#status').textContent = state === 'over' ? '比賽結束' : `${multi ? players[cur].name + ' · ' : ''}第 ${frame + 1} 格 · 第 ${ballNo + 1} 球`;
-  const pl = $('#players');
-  pl.hidden = !multi;
-  if (multi) {
-    pl.replaceChildren(...players.map((p, i) => {
-      const s = document.createElement('span'), b = document.createElement('b');
-      s.className = i === cur && state !== 'over' ? 'on' : '';
-      s.textContent = p.name; b.textContent = totals(p.frames).run; s.appendChild(b);
-      return s;
-    }));
-  }
+  // with more than one player the single sheet is swapped for one row per player
+  boardEl.hidden = multi; mboardEl.hidden = !multi;
+  if (multi) renderMultiBoard();
+}
+const mboardEl = $('#mboard');
+function renderMultiBoard() {
+  const live = state !== 'over', cells = [];
+  const cell = (cls, html = '') => { const d = document.createElement('div'); d.className = cls; d.innerHTML = html; cells.push(d); return d; };
+  cell('mh');
+  for (let f = 0; f < 10; f++) cell(`mh${f === frame && live ? ' cur' : ''}`, String(f + 1));
+  cell('mh end', '總分');
+  players.forEach((p, i) => {
+    const on = i === cur && live ? ' on' : '', last = i === players.length - 1 ? ' last' : '', { out, run } = totals(p.frames);
+    const name = cell(`mn${on}${last}`, '<i>▶</i>'); name.append(p.name); name.title = p.name;
+    for (let f = 0; f < 10; f++) {
+      const mk = marksFor(f, p.frames[f]).map((m) => `<span class="${m === 'X' ? 'x' : m === '/' ? 'sp' : ''}">${m}</span>`).join('');
+      cell(`mf${on}${last}${f === frame ? ' cur' : ''}`, `<div class="mk">${mk}</div><div class="tt">${out[f] ?? ''}</div>`);
+    }
+    cell(`mt end${on}${last}`, String(run));
+  });
+  mboardEl.replaceChildren(...cells);
 }
 const rackEl = $('#rack');
 [[7, 8, 9, 10], [4, 5, 6], [2, 3], [1]].forEach((row) => {
@@ -1962,7 +1980,7 @@ function updateCine(dt) {
 function toAim() { state = 'aim'; ffwd = false; renderBoard(); }
 
 // ---------------- Game flow ----------------
-let pxRaw = 0, holdT = 0, shownBoard = 0, stepQueue = 0;
+let pxRaw = 0, holdT = 0, stepQueue = 0;
 const keyDir = (k) => (k === 'ArrowLeft' || k === 'a' || k === 'A' ? -1 : k === 'ArrowRight' || k === 'd' || k === 'D' ? 1 : 0);
 let state = 'intro', px = 0, shot = null, tState = 0, settleT = null, resultT = 0, gutterFlag = false, pending = null;
 const relFrom = new THREE.Vector3(), relTo = new THREE.Vector3();
@@ -2229,6 +2247,7 @@ renderSetup();
 
 $('#go').addEventListener('click', startGame);
 $('#again').addEventListener('click', () => { $('#over').hidden = true; newGame(); });
+$('#home').addEventListener('click', () => goHome());
 
 // ---------------- Pause menu ----------------
 let paused = false, armed = null, armTimer = null;
@@ -2274,8 +2293,9 @@ confirmButton('restart', '再按一次確定重新開始', () => {
   setPaused(false);
   newGame();
 });
-confirmButton('quit', '再按一次回到首頁（這局不計分）', () => {
-  msgEl.className = ''; $('#info').style.opacity = 0;
+// back to the title screen (from the pause menu, or from the results)
+function goHome() {
+  msgEl.className = ''; $('#info').style.opacity = 0; $('#over').hidden = true;
   setPaused(false);
   if (ballInWorld) { world.removeBody(ballBody); ballInWorld = false; }
   blob.visible = false; guide.visible = false;
@@ -2284,7 +2304,8 @@ confirmButton('quit', '再按一次回到首頁（這局不計分）', () => {
   state = 'intro';
   rackPins(); renderBoard(); setLights(1, true);
   $('#start').hidden = false; $('#go').focus();
-});
+}
+confirmButton('quit', '再按一次回到首頁（這局不計分）', goHome);
 document.addEventListener('visibilitychange', () => { if (document.hidden) setPaused(true); });
 
 // ---------------- Loop ----------------
@@ -2339,16 +2360,6 @@ function update(dt) {
   }
   stanceMarker.visible = state === 'aim' || state === 'intro';
   stanceMarker.position.x = px;
-  const stanceEl = $('#stance');
-  stanceEl.style.visibility = state === 'aim' ? 'visible' : 'hidden';
-  const bd = boardOf(px);
-  if (bd !== shownBoard) {
-    shownBoard = bd;
-    const notes = [];
-    if (bd === 20) notes.push('正中央');
-    if (bd % 5 === 0 && bd >= 5 && bd <= 35) notes.push(`對齊第 ${bd / 5} 支箭頭`);
-    stanceEl.innerHTML = `站位 <b>第 ${bd} 板</b> <small>(由右數)</small>${notes.length ? ' · ' + notes.join(' · ') : ''}`;
-  }
   // fixed 1/240 s steps, counted here rather than by cannon's own accumulator, so world.time advances exactly
   // like the look-ahead copy's (pins fall asleep by world.time; any drift would make the prediction wrong)
   physAcc += sdt;
