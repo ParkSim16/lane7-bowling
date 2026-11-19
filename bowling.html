@@ -307,9 +307,9 @@ body.paused #banner .band { animation-play-state: paused; }
       <button class="btn" id="left" aria-label="往左移動站位"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg></button>
       <div class="spacer">
         <div id="spin" role="group" aria-label="旋轉">
-          <button id="spinL" aria-label="往左曲（Q）"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path fill="currentColor" stroke="none" d="M11 22A9 9 0 0 0 10 4.5V9A7 7 0 0 1 11 22Z"/><path fill="currentColor" stroke="none" d="M10 1.8L3.6 6.75L10 11.7Z"/></svg></button>
+          <button id="spinL" aria-label="往左曲"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path fill="currentColor" stroke="none" d="M11 22A9 9 0 0 0 10 4.5V9A7 7 0 0 1 11 22Z"/><path fill="currentColor" stroke="none" d="M10 1.8L3.6 6.75L10 11.7Z"/></svg></button>
           <span id="spinV" aria-live="polite">直球</span>
-          <button id="spinR" aria-label="往右曲（E）"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path fill="currentColor" stroke="none" d="M13 22A9 9 0 0 1 14 4.5V9A7 7 0 0 0 13 22Z"/><path fill="currentColor" stroke="none" d="M14 1.8L20.4 6.75L14 11.7Z"/></svg></button>
+          <button id="spinR" aria-label="往右曲"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path fill="currentColor" stroke="none" d="M13 22A9 9 0 0 1 14 4.5V9A7 7 0 0 0 13 22Z"/><path fill="currentColor" stroke="none" d="M14 1.8L20.4 6.75L14 11.7Z"/></svg></button>
         </div>
       </div>
       <button class="btn" id="right" aria-label="往右移動站位"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5l7 7-7 7"/></svg></button>
@@ -326,11 +326,11 @@ body.paused #banner .band { animation-play-state: paused; }
     <h1>Park</h1>
     <p class="tag">第一人稱保齡球</p>
     <dl class="how">
-      <dt>瞄準</dt><dd>往左或右斜著滑，球就往那個方向走。滑的時候球道上會即時出現球會走的路線，▼ 是會打到的地方。</dd>
-      <dt>曲球</dt><dd>按下方的 ↶ ↷ 選左曲或右曲，每按一下 5%，按住可以連續調（也可按 Q／E）。</dd>
-      <dt>丟球</dt><dd>按住畫面往上滑，放開就出手，滑得越快球越快。旋轉只看 ↶ ↷ 的設定，滑的弧度不會讓球轉彎。</dd>
-      <dt>站位</dt><dd>用 ← → 鍵或兩側按鈕在犯規線後左右移動。</dd>
-      <dt>暫停</dt><dd>按左上角的暫停鈕，或按 Esc／P。</dd>
+      <dt>瞄準</dt><dd>手指按住畫面左右移動，粉色線會跟著轉，瞄好再往上甩出去。也可以一碰到就直接斜著甩，斜多少偏多少。</dd>
+      <dt>丟球</dt><dd>往上甩出去，甩得越快球越快，球旁邊的力道條會顯示力道。只算最後往上甩的那一下，前面怎麼瞄都不影響。</dd>
+      <dt>曲球</dt><dd>用左下角的 ↶ ↷ 選左曲或右曲，每按一下 5%，按住可以連續調。</dd>
+      <dt>站位</dt><dd>用畫面兩側的 ‹ › 在犯規線後左右移動。</dd>
+      <dt>暫停</dt><dd>按左上角的暫停鈕。</dd>
     </dl>
     <div class="setup">
       <div class="setup-label" id="seg-label">玩家人數與名字</div>
@@ -378,17 +378,17 @@ body.paused #banner .band { animation-play-state: paused; }
       <details class="rules">
         <summary>玩法說明</summary>
         <dl class="how">
-          <dt>丟球</dt><dd>按住畫面往上滑，放開就出手。滑得越快，球速越快。</dd>
-          <dt>瞄準</dt><dd>往左或右斜著滑，球就往那個方向走。滑的時候球道上會即時出現球會走的路線，▼ 是會打到的地方。</dd>
-          <dt>曲球</dt><dd>按下方的 ↶ ↷ 選左曲或右曲，每按一下 5%，按住可以連續調（也可按 Q／E）。</dd>
-          <dt>丟球</dt><dd>往上滑出手，滑得越快球越快；斜著滑就斜著丟。</dd>
-          <dt>站位</dt><dd>用 ← → 鍵或兩側按鈕在犯規線後左右移動。</dd>
+          <dt>瞄準</dt><dd>手指按住畫面左右移動，粉色線會跟著轉，瞄好再往上甩出去。也可以一碰到就直接斜著甩，斜多少偏多少。</dd>
+          <dt>丟球</dt><dd>往上甩出去，甩得越快球越快，球旁邊的力道條會顯示力道。只算最後往上甩的那一下，前面怎麼瞄都不影響。</dd>
+          <dt>曲球</dt><dd>用左下角的 ↶ ↷ 選左曲或右曲，每按一下 5%，按住可以連續調。</dd>
+          <dt>站位</dt><dd>用畫面兩側的 ‹ › 在犯規線後左右移動。</dd>
+          <dt>火球</dt><dd>球速 33 km/h 以上，球會燃燒著滾出去。</dd>
           <dt>慢動作</dt><dd>會全倒或補中的那一球，快撞到瓶子時會放慢，撞上去的瞬間恢復全速。</dd>
-          <dt>快轉</dt><dd>置瓶機在整理球瓶、或過場動畫播放時，點一下畫面（或按空白鍵）可以快轉。</dd>
+          <dt>快轉</dt><dd>置瓶機在整理球瓶、或過場動畫播放時，點一下畫面可以快轉。</dd>
         </dl>
       </details>
     </div>
-    <p class="keyhint">按 Esc 或 P 也能暫停／繼續 · <span class="ver"></span></p>
+    <p class="keyhint"><span class="ver"></span></p>
   </div>
 </div>
 
@@ -426,7 +426,7 @@ const ROW = SP * Math.sin(Math.PI / 3);
 const MAXX = W / 2 - R - 0.02;
 
 // Game version: bump together with CHANGELOG.md and the git tag on every push
-const GAME_VERSION = '1.11.0';
+const GAME_VERSION = '1.11.1';
 document.querySelectorAll('.ver').forEach((el) => { el.textContent = `v${GAME_VERSION}`; });
 
 try { await Promise.race([Promise.all([document.fonts.load('100px Monoton'), document.fonts.load('44px "Tilt Neon"')]), new Promise((r) => setTimeout(r, 1500))]); } catch (e) {}
