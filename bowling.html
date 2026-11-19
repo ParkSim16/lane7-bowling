@@ -74,6 +74,14 @@ body {
 #controls { display: flex; align-items: center; width: 100%; }
 #controls .spacer { display: flex; justify-content: flex-start; min-width: 0; }
 #left, #right { position: fixed; top: 52%; transform: translateY(-50%); }
+/* power meter: a vertical bar beside the ball in hand, live while swiping, held for a moment after the release */
+#power { position: fixed; right: max(20px, env(safe-area-inset-right, 0px)); bottom: 24%; height: 18vh; min-height: 110px; width: 44px;
+  display: flex; flex-direction: column; align-items: center; gap: 5px; opacity: 0; transition: opacity 0.25s; pointer-events: none; }
+#power.show { opacity: 1; transition: opacity 0.1s; }
+#power .bar { position: relative; flex: 1; width: 14px; border-radius: 7px; background: var(--panel); border: 1px solid var(--line); overflow: hidden; }
+#power .bar i { position: absolute; left: 0; right: 0; bottom: 0; height: 0%; border-radius: 7px;
+  background: linear-gradient(to top, #63ddff, #ffc65c 60%, #ff4f7b) bottom / 100% max(18vh, 110px) no-repeat; }
+#power b { font-size: 13px; font-weight: 900; color: var(--ink); text-shadow: 0 1px 6px rgba(0, 0, 0, 0.9); font-variant-numeric: tabular-nums; }
 /* the stance and curve buttons only show while aiming (#hud gets .aiming); otherwise they fade out of the way */
 #left, #right, #spin { transition: opacity 0.25s, visibility 0s; }
 #hud:not(.aiming) #left, #hud:not(.aiming) #right, #hud:not(.aiming) #spin { opacity: 0; visibility: hidden; pointer-events: none; transition: opacity 0.25s, visibility 0s 0.25s; }
@@ -294,6 +302,7 @@ body.paused #banner .band { animation-play-state: paused; }
   </div>
   <div id="bottom">
     <div id="info"></div>
+    <div id="power" aria-hidden="true"><div class="bar"><i></i></div><b>0%</b></div>
     <div id="controls">
       <button class="btn" id="left" aria-label="往左移動站位"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg></button>
       <div class="spacer">
@@ -417,7 +426,7 @@ const ROW = SP * Math.sin(Math.PI / 3);
 const MAXX = W / 2 - R - 0.02;
 
 // Game version: bump together with CHANGELOG.md and the git tag on every push
-const GAME_VERSION = '1.9.2';
+const GAME_VERSION = '1.10.0';
 document.querySelectorAll('.ver').forEach((el) => { el.textContent = `v${GAME_VERSION}`; });
 
 try { await Promise.race([Promise.all([document.fonts.load('100px Monoton'), document.fonts.load('44px "Tilt Neon"')]), new Promise((r) => setTimeout(r, 1500))]); } catch (e) {}
@@ -1096,6 +1105,12 @@ function rackPins() {
 const HOOK_REF_SPEED = 7.5;
 function hookForce(ball, spin, speed) {
   const p = ball.position;
+  // past the end of the deck the ball is in the pit: the cushion at the back soaks it up instead of
+  // bouncing it back up onto the deck (it used to roll back out toward the bowler, sometimes into pins)
+  if (p.z < LANE_END) {
+    if (ball.velocity.z > 0) ball.velocity.z = 0;
+    ball.velocity.x *= 0.97; ball.velocity.z *= 0.97;
+  }
   if (Math.abs(p.x) < W / 2 && p.y > 0.05 && p.z < -5 && p.z > HEAD_Z + 0.2) {
     const bite = clamp((-p.z - 5) / 6, 0, 1), k = (speed / HOOK_REF_SPEED) ** 2;
     ball.applyForce(new CANNON.Vec3(spin * 5.2 * k * bite, 0, 0));
@@ -2032,75 +2047,111 @@ for (const [id, d] of [['#spinL', -1], ['#spinR', 1]]) {
 }
 
 // the swipe: speed and direction
+// The throw is only the LAST upward stroke: from the lowest point the finger reached (after any aiming, resting
+// or pulling back down) to where it lets go. Everything before that is ignored, for both direction and power.
+function finalStroke(pts) {
+  // walk back from the release while the finger was still on the same upward run: each earlier sample has to be
+  // lower and roughly below. Stop where it was coming down, sliding sideways (aiming), or resting (over 60 ms).
+  const n = pts.length;
+  let e = n - 1; // the finger may stop for a moment before lifting off: the stroke ends where it arrived
+  while (e > 0 && Math.abs(pts[e - 1].y - pts[n - 1].y) < 3 && Math.abs(pts[e - 1].x - pts[n - 1].x) < 3) e--;
+  let s = e;
+  for (let i = e - 1; i >= 0; i--) {
+    // a gap of over 60 ms means the finger rested (a phone sends no moves while it is still): stop there first
+    if (pts[s].t - pts[i].t > 60) break;
+    const up = pts[i].y - pts[s].y, side = Math.abs(pts[i].x - pts[s].x);
+    if (up > 0.5 && up >= side * 0.5) s = i;
+    else if (up < -6 || side > 12) break;
+  }
+  return { s, e, start: pts[s], end: pts[e], low: pts[s] };
+}
 function analyze(pts) {
-  const a = pts[0], e = pts[pts.length - 1];
-  const dy = a.y - e.y;
-  // direction: the slant of the swipe's main part — a line fitted through its first 80% of upward travel. The last
-  // bit is left out because a thumb tends to flick sideways as it lifts off, which used to swing the throw away from
-  // what the guide had shown a moment before.
-  const cutY = a.y - Math.max(dy, 0) * 0.8;
-  const body = pts.filter((p) => p.y >= cutY);
-  let slope = (e.x - a.x) / Math.max(dy, 1);
-  if (body.length >= 3) { // least squares x = slope * up + c, with up = how far above the start
-    let su = 0, sx = 0, suu = 0, sux = 0;
-    for (const p of body) { const u = a.y - p.y; su += u; sx += p.x; suu += u * u; sux += u * p.x; }
-    const n = body.length, den = n * suu - su * su;
-    if (den > 1e-6) slope = (n * sux - su * sx) / den;
+  const { s, e, start, end, low } = finalStroke(pts);
+  const dy = low.y - pts[pts.length - 1].y; // how far the final stroke went up
+  // direction: set by AIMING, before the flick — while the finger is held down, moving it sideways turns the
+  // throw, in proportion (linear): moving 40% of the screen's width from where it touched down is the full turn, into
+  // the gutter. The flick itself only gives power; its slant is ignored, so a thumb that drifts while flicking
+  // does not spoil the aim. Once the flick starts, the aim is the one the finger had at the bottom of it.
+  const aimX = dy > 14 ? start.x : pts[pts.length - 1].x;
+  let ang = clamp((aimX - pts[0].x) / (innerWidth * 0.4) * 0.05, -0.05, 0.05);
+  // ...but a flick straight from touching down (no aiming first: the stroke sets off within 0.15 s of the touch,
+  // from about where it touched) goes the way it is slanted instead, in proportion: ~1.1° per 10° of slant,
+  // the gutter at about 25°.
+  if (dy > 14 && start.t - pts[0].t < 150 && Math.abs(start.x - pts[0].x) < 10) {
+    const body = pts.slice(s, e + 1);
+    let slope = (end.x - start.x) / Math.max(start.y - end.y, 1);
+    if (body.length >= 3) { // a least-squares line through the stroke, so one jittery sample cannot swing it
+      let su = 0, sx = 0, suu = 0, sux = 0;
+      for (const p of body) { const u = start.y - p.y; su += u; sx += p.x; suu += u * u; sux += u * p.x; }
+      const m = body.length, den = m * suu - su * su;
+      if (den > 1e-6) slope = (m * sux - su * sx) / den;
+    }
+    ang = clamp(Math.atan(slope) * 0.11, -0.05, 0.05);
   }
-  // A couple of degrees of hand wobble count as straight (dead zone); past that the ball turns gently —
-  // about 10 boards at the pins for a 10° slant, the gutter only when clearly slanted.
-  const tilt = Math.atan(slope), AIM_DEAD = 0.04, AIM_GAIN = 0.11;
-  const ang = clamp(Math.sign(tilt) * Math.max(0, Math.abs(tilt) - AIM_DEAD) * AIM_GAIN, -0.05, 0.05);
-  // speed: the fastest ~110 ms stretch of the swipe. Not just the last stretch — a thumb slows down as it lets go,
-  // and a slower ball hooks a lot more, so the curve used to come out bigger than the guide had shown.
+  // power: the fastest ~80 ms of the final stroke. (Not its average: after aiming, the finger starts the flick
+  // from rest and the slow start dragged the average down, while a flick straight from touching down did not.)
   let vmax = 0;
-  for (let j = 1, k = 0; j < pts.length; j++) {
-    while (k < j - 1 && pts[j].t - pts[k + 1].t >= 110) k++;
-    const dtm = Math.max((pts[j].t - pts[k].t) / 1000, 0.016);
-    vmax = Math.max(vmax, (pts[k].y - pts[j].y) / dtm);
+  for (let j = s + 1, k = s; j <= e; j++) {
+    while (k < j - 1 && pts[j].t - pts[k].t > 80) k++;
+    vmax = Math.max(vmax, (pts[k].y - pts[j].y) / Math.max((pts[j].t - pts[k].t) / 1000, 0.016));
   }
-  const vn = vmax / innerHeight;
+  const vn = vmax / innerHeight; // screen heights per second
   const speed = clamp(3.4 + vn * 1.5, 3.6, 10.8);
   return { dy, speed, ang };
 }
 const shotFrom = (s) => ({ speed: s.speed, ang: s.ang, spin: baseSpin() });
 
-let drag = null; // { pts, mode: null | 'throw' (going up) | 'none' (going down), x0 }
+let drag = null; // { pts, mode: null (aiming) | 'throw' (the final upward flick is under way), x0 }
 canvas.addEventListener('pointerdown', (e) => {
   if (paused) return;
   if (state === 'reset' || state === 'cine') { ffwd = true; return; } // tap to fast-forward the machine / transition
   if (state !== 'aim') return;
   initAudio();
   try { canvas.setPointerCapture(e.pointerId); } catch (err) {}
-  drag = { pts: [{ x: e.clientX, y: e.clientY, t: performance.now() }], mode: null, x0: e.clientX };
+  drag = { pts: [{ x: e.clientX, y: e.clientY, t: performance.now() }], mode: null, x0: e.clientX, dirty: true }; // the aim line shows at once
 });
 canvas.addEventListener('pointermove', (e) => {
   if (!drag) return;
   drag.pts.push({ x: e.clientX, y: e.clientY, t: performance.now() });
-  if (!drag.mode) { // once the finger has moved 14 px: going up is a throw (at any slant), going down is nothing
-    const dx = e.clientX - drag.x0, up = drag.pts[0].y - e.clientY;
-    if (Math.hypot(dx, up) > 14) drag.mode = up > 0 ? 'throw' : 'none';
-  }
+  // a throw as soon as the final upward stroke is longer than 14 px (moving around or pulling down first is fine)
+  const { low } = finalStroke(drag.pts);
+  drag.mode = low.y - e.clientY > 14 ? 'throw' : null;
+
   drag.dirty = true; // the guide and the readout are redrawn once per frame in updateAim()
 });
+// power 0-100%: the slowest to the fastest ball a swipe can give (see analyze)
+let powerHold = null;
+function showPower(speed) {
+  const pct = Math.round(clamp((speed - 3.6) / (10.8 - 3.6), 0, 1) * 100), el = $('#power');
+  el.querySelector('i').style.height = `${pct}%`; el.querySelector('b').textContent = `${pct}%`;
+  el.classList.add('show');
+}
+function holdPower(ms) { // keep the last reading up for a moment, then fade
+  clearTimeout(powerHold);
+  powerHold = setTimeout(() => { powerHold = null; $('#power').classList.remove('show'); }, ms);
+}
 // the path appears only while the ball is being swiped up (not while lining up), and follows the swipe live
+let aimSpeed = 8; // the speed the path is drawn at while aiming (the last throw's), before the flick gives the real one
 function updateAim() {
-  const swiping = state === 'aim' && drag && drag.mode === 'throw';
-  if (!swiping) { guide.visible = false; return; }
+  const holding = state === 'aim' && drag;
+  if (!holding) { guide.visible = false; if (!powerHold) $('#power').classList.remove('show'); return; }
   if (!drag.dirty) return;
   drag.dirty = false;
-  const sh = shotFrom(analyze(drag.pts));
-  previewPath(sh); guide.visible = true; // the shot as it stands
+  const a = analyze(drag.pts), throwing = drag.mode === 'throw';
+  const sh = shotFrom(throwing ? a : { ...a, speed: aimSpeed });
+  previewPath(sh); guide.visible = true; // the shot as it stands: while aiming, and live through the flick
+  if (throwing) showPower(sh.speed); else if (!powerHold) $('#power').classList.remove('show');
   const el = $('#info'); clearTimeout(infoTimer); el.textContent = spinLabel(sh.spin); el.style.opacity = 1;
 }
 const endDrag = (e, cancel) => {
   if (!drag) return;
   const { pts, mode } = drag; drag = null;
   if (mode !== 'throw') return; // a tap or a downward drag: nothing is thrown
-  if (cancel || state !== 'aim') { $('#info').style.opacity = 0; return; }
+  if (cancel || state !== 'aim') { $('#info').style.opacity = 0; holdPower(0); return; }
   pts.push({ x: e.clientX, y: e.clientY, t: performance.now() });
   const s = analyze(pts);
-  if (s.dy < 50) { flashHint(); return; }
+  if (s.dy < 50) { flashHint(); holdPower(0); return; }
+  showPower(s.speed); holdPower(1100); aimSpeed = s.speed; // the power the ball actually leaves with
   shot = shotFrom(s); guide.visible = false;
   state = 'release'; tState = 0; relFrom.copy(ballMesh.position); relTo.set(px, R, -0.3);
   showInfo(`球速 ${Math.round(s.speed * 3.6)} km/h · ${spinLabel(shot.spin)}`);
