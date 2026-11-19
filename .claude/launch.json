@@ -4,7 +4,7 @@
     {
       "name": "bowling",
       "runtimeExecutable": "node",
-      "runtimeArgs": ["-e", "const h=require('http'),f=require('fs');h.createServer((q,s)=>{f.readFile('bowling.html',(e,d)=>{s.writeHead(200,{'Content-Type':'text/html; charset=utf-8'});s.end('<!doctype html><html><head><meta charset=utf-8><meta name=viewport content=\"width=device-width,initial-scale=1,viewport-fit=cover\"></head><body>'+d+'</body></html>')})}).listen(5317)"],
+      "runtimeArgs": ["-e", "const h=require('http'),f=require('fs'),p=require('path');h.createServer((q,s)=>{let n=p.basename(decodeURIComponent(q.url.split('?')[0]));if(!n||n==='/')n='bowling.html';if(!/\\.html$/.test(n)||!f.existsSync(n)){s.writeHead(404);return s.end();}f.readFile(n,(e,d)=>{s.writeHead(200,{'Content-Type':'text/html; charset=utf-8','Cache-Control':'no-store'});s.end(d)})}).listen(5317)"],
       "port": 5317
     }
   ]
