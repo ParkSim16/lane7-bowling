@@ -426,7 +426,7 @@ const ROW = SP * Math.sin(Math.PI / 3);
 const MAXX = W / 2 - R - 0.02;
 
 // Game version: bump together with CHANGELOG.md and the git tag on every push
-const GAME_VERSION = '1.10.0';
+const GAME_VERSION = '1.11.0';
 document.querySelectorAll('.ver').forEach((el) => { el.textContent = `v${GAME_VERSION}`; });
 
 try { await Promise.race([Promise.all([document.fonts.load('100px Monoton'), document.fonts.load('44px "Tilt Neon"')]), new Promise((r) => setTimeout(r, 1500))]); } catch (e) {}
@@ -719,8 +719,8 @@ ballMesh.castShadow = true; scene.add(ballMesh);
 const blob = new THREE.Mesh(new THREE.PlaneGeometry(0.4, 0.4), new THREE.MeshBasicMaterial({ map: blobTexture(), transparent: true, depthWrite: false }));
 blob.rotation.x = -Math.PI / 2; blob.visible = false; scene.add(blob);
 
-// Aim guide: while swiping, the path the ball will take (hook included) drawn on the lane as a thin ribbon,
-// with a ring where it reaches the pins (grey if it ends in the gutter). The path itself comes from previewPath().
+// Aim guide: while aiming, the path the ball will take (hook included) drawn on the lane as a thin ribbon over
+// most of the lane (it stops about 2.5 m short of the pins). The path itself comes from previewPath().
 const GUIDE_N = 100;
 const guidePos = new Float32Array(GUIDE_N * 6), guideUV = new Float32Array(GUIDE_N * 4);
 const guideGeo = new THREE.BufferGeometry();
@@ -731,20 +731,19 @@ const guideMat = new THREE.ShaderMaterial({
   uniforms: { uColor: { value: new THREE.Color().setHex(0xff4f7b, THREE.LinearSRGBColorSpace) } },
   vertexShader: `attribute vec2 aUv; varying vec2 vUv; void main() { vUv = aUv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }`,
   fragmentShader: `uniform vec3 uColor; varying vec2 vUv;
-    void main() { float a = (0.9 - 0.2 * vUv.x) * smoothstep(0.0, 0.8, 1.0 - abs(vUv.y)); gl_FragColor = vec4(uColor, a); }`,
+    void main() { float a = (0.9 - 0.2 * vUv.x) * smoothstep(0.0, 0.8, 1.0 - abs(vUv.y)) * (1.0 - smoothstep(0.8, 1.0, vUv.x)); gl_FragColor = vec4(uColor, a); }`, // fades out at its far end
   transparent: true, depthWrite: false, side: THREE.DoubleSide,
 });
 const guideRibbon = new THREE.Mesh(guideGeo, guideMat); guideRibbon.frustumCulled = false;
-// a ▼ floating above where the ball reaches the pins (a ring flat on the lane is too foreshortened to see from the line)
-const guideEnd = new THREE.Sprite(new THREE.SpriteMaterial({ map: (() => {
-  const c = document.createElement('canvas'); c.width = c.height = 64; const g = c.getContext('2d');
-  g.shadowColor = '#fff'; g.shadowBlur = 10; g.fillStyle = '#fff';
-  g.beginPath(); g.moveTo(14, 16); g.lineTo(50, 16); g.lineTo(32, 50); g.closePath(); g.fill();
-  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return t;
-})(), color: 0xffc65c, transparent: true, depthWrite: false, toneMapped: false }));
-guideEnd.scale.set(0.26, 0.26, 1);
-const guide = new THREE.Group(); guide.add(guideRibbon, guideEnd); guide.visible = false; scene.add(guide);
-function drawGuide(path, gutter) {
+const guide = new THREE.Group(); guide.add(guideRibbon); guide.visible = false; scene.add(guide);
+const GUIDE_END_Z = HEAD_Z + 2.5; // the line stops about 2.5 m short of the pins
+function drawGuide(full, gutter) {
+  // cut the path where it passes GUIDE_END_Z (the far third of the lane is left out)
+  const path = [];
+  for (const q of full) {
+    if (q.z < GUIDE_END_Z) { const l = path[path.length - 1]; if (l) { const u = (l.z - GUIDE_END_Z) / (l.z - q.z); path.push({ x: l.x + (q.x - l.x) * u, z: GUIDE_END_Z }); } break; }
+    path.push(q);
+  }
   const n = Math.min(path.length, GUIDE_N);
   for (let i = 0; i < n; i++) {
     const p = path[i], a = path[Math.max(0, i - 1)], c = path[Math.min(n - 1, i + 1)];
@@ -755,9 +754,6 @@ function drawGuide(path, gutter) {
   }
   guideGeo.setDrawRange(0, Math.max(0, n - 1) * 6);
   guideGeo.attributes.position.needsUpdate = guideGeo.attributes.aUv.needsUpdate = true;
-  const end = path[n - 1];
-  guideEnd.position.set(end.x, gutter ? 0.25 : 0.55, end.z);
-  guideEnd.material.color.setHex(gutter ? 0x7a7f99 : 0xffc65c);
 }
 
 // Stance marker: which board the bowler stands on (boards counted from the right, 1–39)
@@ -807,7 +803,7 @@ const fxMat = new THREE.ShaderMaterial({
 });
 const fxPoints = new THREE.Points(fxGeo, fxMat); fxPoints.frustumCulled = false; scene.add(fxPoints);
 const _d = new THREE.Vector3();
-// o: { x, y, z, spread:[x,y,z], dir:Vector3, cone, speed:[a,b], colors:[hex], bright, alpha, size:[a,b], life:[a,b], drag, grav }
+// o: { x, y, z, spread:[x,y,z], dir:Vector3, cone, speed:[a,b], colors:[hex], bright, alpha, size:[a,b], life:[a,b], drag, grav, carry:Vector3 }
 function emit(n, o) {
   const sp = o.spread || [0, 0, 0];
   for (let k = 0; k < n; k++) {
@@ -816,6 +812,7 @@ function emit(n, o) {
     _d.randomDirection().multiplyScalar(o.cone ?? 1); if (o.dir) _d.add(o.dir);
     _d.normalize().multiplyScalar(rand(o.speed[0], o.speed[1]));
     fx.vel[i3] = _d.x; fx.vel[i3 + 1] = _d.y; fx.vel[i3 + 2] = _d.z;
+    if (o.carry) { fx.vel[i3] += o.carry.x; fx.vel[i3 + 1] += o.carry.y; fx.vel[i3 + 2] += o.carry.z; }
     tmpC.setHex(pick(o.colors), THREE.LinearSRGBColorSpace).multiplyScalar(o.bright ?? 1);
     fx.col[i3] = tmpC.r; fx.col[i3 + 1] = tmpC.g; fx.col[i3 + 2] = tmpC.b;
     fx.max[i] = fx.life[i] = rand(o.life[0], o.life[1]); fx.a0[i] = o.alpha ?? 1;
@@ -924,13 +921,103 @@ function updateTrail(dt) {
   for (let i = 0; i < n; i++) {
     const p = trailPts[i], a = trailPts[Math.max(0, i - 1)], c = trailPts[Math.min(n - 1, i + 1)];
     let dx = c.x - a.x, dz = c.z - a.z; const len = Math.hypot(dx, dz) || 1; dx /= len; dz /= len;
-    const t = i / (n - 1), w = 0.075 * (0.2 + 0.8 * t);
+    const t = i / (n - 1), w = 0.075 * (1 + 0.8 * fire) * (0.2 + 0.8 * t);
     trailPos.set([p.x - dz * w, p.y, p.z + dx * w, p.x + dz * w, p.y, p.z - dx * w], i * 6);
     trailUV.set([t, -1, t, 1], i * 4);
   }
   trailGeo.setDrawRange(0, (n - 1) * 6);
   trailGeo.attributes.position.needsUpdate = trailGeo.attributes.aUv.needsUpdate = true;
-  trailMat.uniforms.uFade.value = trailFade * trailBright;
+  trailMat.uniforms.uFade.value = trailFade * trailBright * (1 + 0.8 * fire);
+}
+
+// ---- fireball: a ball thrown at 33 km/h or more burns down the lane ----
+// Like a comet: tongues of fire wrap the ball (a flame shell drawn just behind it, so the ball itself stays
+// visible in the middle) and a long tail of flame streams out behind it and rises. The lane trail turns to fire,
+// the hit throws out a big burst of fire, and after the hit the fire dies down over about a second.
+let fire = 0, fireWant = 0; // 0..1 how much it burns now / is heading to
+const fireLight = new THREE.PointLight(0xff6a1e, 0, 2.2, 1.8); scene.add(fireLight);
+const BALL_EMISSIVE = new THREE.Color(0xff4a0a), _carry = new THREE.Vector3(), _toCam = new THREE.Vector3();
+const _ringU = new THREE.Vector3(), _ringV = new THREE.Vector3(), _ringDir = new THREE.Vector3(), _carrySpin = new THREE.Vector3(), UP3 = new THREE.Vector3(0, 1, 0);
+const TRAIL_NORMAL = { head: linear(0xff4f7b), tail: linear(0x63ddff) }, TRAIL_FIRE = { head: linear(0xffd27a), tail: linear(0xff3a0c) };
+// the flame shell: a camera-facing square around the ball; the shader draws flickering tongues of fire from the
+// ball's outline outwards (taller upwards, the way flames rise), with a hot yellow core fading to deep red
+const FLAME_NOISE = `
+  float hash(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
+  float noise(vec2 p) { vec2 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 * f);
+    return mix(mix(hash(i), hash(i + vec2(1.0, 0.0)), f.x), mix(hash(i + vec2(0.0, 1.0)), hash(i + vec2(1.0, 1.0)), f.x), f.y); }
+  float fbm(vec2 p) { float v = 0.0, a = 0.5; for (int k = 0; k < 4; k++) { v += a * noise(p); p *= 2.03; a *= 0.5; } return v; }
+  vec3 flameColor(float h) { // h: heat 0..1+
+    vec3 c = mix(vec3(0.55, 0.05, 0.0), vec3(1.0, 0.32, 0.03), smoothstep(0.0, 0.45, h));
+    c = mix(c, vec3(1.0, 0.72, 0.2), smoothstep(0.45, 0.85, h));
+    return mix(c, vec3(1.0, 0.95, 0.75), smoothstep(0.85, 1.2, h)); }`;
+const flameMat = new THREE.ShaderMaterial({
+  uniforms: { uTime: { value: 0 }, uFade: { value: 0 }, uDrift: { value: 0 } },
+  vertexShader: 'varying vec2 vUv; void main() { vUv = uv * 2.0 - 1.0; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }',
+  fragmentShader: `uniform float uTime, uFade, uDrift; varying vec2 vUv;` + FLAME_NOISE + `
+    void main() {
+      float r = length(vUv), a = atan(vUv.y, vUv.x), up = max(vUv.y, 0.0);
+      const float RIM = 0.42; // the ball's outline in this square
+      // ragged, flickering tongues licking out from the outline and rising. uDrift carries the fire sideways across
+      // the ball the way a hook's side spin moves its surface (seen from behind: to the right for a right hook)
+      float n = fbm(vec2(a * 2.2 + 1.7, r * 3.0 - uTime * 4.0)) * 0.55
+              + fbm(vec2(vUv.x * 3.2 - uDrift, vUv.y * 3.2 - uTime * 2.2)) * 0.75;
+      float reach = RIM + (0.16 + 0.36 * up + 0.1 * (1.0 - abs(vUv.x))) * (0.35 + 1.1 * n); // tongues: longer upwards
+      float h = smoothstep(RIM - 0.06, RIM + 0.02, r) * (1.0 - smoothstep(RIM, reach, r));
+      h *= 0.7 + 0.9 * n;
+      gl_FragColor = vec4(flameColor(h * 1.45), min(1.0, h * 1.5) * uFade);
+    }`,
+  transparent: true, depthWrite: false, blending: THREE.AdditiveBlending,
+});
+const flame = new THREE.Mesh(new THREE.PlaneGeometry(R * 4.8, R * 4.8), flameMat); flame.visible = false; scene.add(flame);
+function igniteBall(on) {
+  fireWant = on ? 1 : 0; if (on) fire = Math.max(fire, 0.6);
+  trailMat.uniforms.uHead.value.copy(on ? TRAIL_FIRE.head : TRAIL_NORMAL.head);
+  trailMat.uniforms.uTail.value.copy(on ? TRAIL_FIRE.tail : TRAIL_NORMAL.tail);
+  if (on) igniteSound();
+}
+function updateFire(dt) {
+  if (shotHit || !(state === 'rolling' || state === 'result') || !ballInWorld) fireWant = 0; // dies down after the hit
+  fire += (fireWant - fire) * (1 - Math.exp(-dt * (fireWant > fire ? 10 : 1.4)));
+  if (fire < 0.01) { fire = 0; fireLight.intensity = 0; ballMesh.material.emissiveIntensity = 0; flame.visible = false; return; }
+  const b = ballMesh.position, flick = 0.85 + 0.15 * Math.sin(elapsed * 31) * Math.sin(elapsed * 17 + 1);
+  // the shell sits just behind the ball (seen from the camera) and always faces the camera
+  _toCam.copy(camera.position).sub(b).normalize();
+  flame.position.copy(b).addScaledVector(_toCam, -R * 1.05); flame.quaternion.copy(camera.quaternion);
+  flame.visible = b.y > -0.3; flameMat.uniforms.uTime.value = elapsed; flameMat.uniforms.uFade.value = fire;
+  // the fire moves the way the ball's surface does: seen from behind, a hook's side spin slides its face sideways
+  // (spin about the upright axis: to the right for a right hook), so the fire is carried across that way
+  const wy = ballBody.angularVelocity.y;
+  flameMat.uniforms.uDrift.value += wy * 0.35 * dt;
+  fireLight.position.set(b.x, b.y + 0.2, b.z + 0.3); fireLight.intensity = 0.9 * fire * flick; // a warm glow on the lane, no more
+  ballMesh.material.emissive.copy(BALL_EMISSIVE); ballMesh.material.emissiveIntensity = 0.08 * fire * flick;
+  if (b.y > -0.3) {
+    // the tail: flames that leave the ball moving almost as fast as it does, then slow, rise and burn out, so they
+    // stream out behind it in a long fiery tail. They start on a ring around the ball's outline as the camera sees
+    // it (never over its face), or — the camera being behind the ball — they would cover it and hide its spin.
+    const n = Math.round(dt * 700 * fire + Math.random()), v = ballBody.velocity;
+    _ringU.crossVectors(_toCam, UP3).normalize(); _ringV.crossVectors(_ringU, _toCam).normalize();
+    _carry.set(v.x * 0.75, 0, v.z * 0.75);
+    for (let k = 0; k < n; k++) {
+      const a = Math.random() * Math.PI * 2, rr = R * rand(1.05, 1.3);
+      const ox = (_ringU.x * Math.cos(a) + _ringV.x * Math.sin(a)) * rr, oy = (_ringU.y * Math.cos(a) + _ringV.y * Math.sin(a)) * rr;
+      const oz = (_ringU.z * Math.cos(a) + _ringV.z * Math.sin(a)) * rr;
+      // ...and they leave with the speed of the ball's surface from its side spin (spin about the upright axis × the
+      // offset), so a hook flings them off to one side, the way its face is turning
+      const sx = wy * oz, sz = -wy * ox; // (0, wy, 0) × (ox, oy, oz)
+      emit(1, { x: b.x + ox, y: b.y + oy, z: b.z + oz, dir: _ringDir.set(ox, oy + R * 0.9, oz), cone: 0.35, speed: [0.25, 0.8],
+        carry: _carrySpin.set(_carry.x + sx * 0.6, 0, _carry.z + sz * 0.6), colors: [0xff9a2a, 0xff6a14, 0xff4a0c, 0xd02a06], bright: 0.75, alpha: 0.8 * fire,
+        size: [0.04, 0.09], life: [0.2, 0.45], drag: 4.5, grav: -1.8 });
+    }
+    if (Math.random() < dt * 40 * fire) // sparks flying off
+      emit(1, { x: b.x + _ringV.x * R * 1.1, y: b.y + _ringV.y * R * 1.1, z: b.z + _ringV.z * R * 1.1, dir: new THREE.Vector3(0, 1, 1.4), cone: 0.8, speed: [0.8, 1.8],
+        carry: _carry.set(v.x * 0.5, 0, v.z * 0.5), colors: [0xfff0c0, 0xffc65c], bright: 1.6, size: [0.008, 0.016], life: [0.4, 0.8], drag: 1.5, grav: 1.5 });
+  }
+}
+function fireImpact(x, y, z) { // the burning ball hits the rack: a big burst of fire
+  emit(90, { x, y: y + 0.05, z, spread: [0.12, 0.08, 0.1], dir: new THREE.Vector3(0, 0.8, 0.2), cone: 1.2, speed: [0.8, 3.2],
+    colors: [0xffb347, 0xff7a1e, 0xff4a12, 0xe0300a], bright: 1.1, size: [0.03, 0.09], life: [0.3, 0.8], drag: 2.4, grav: -0.8 });
+  emit(30, { x, y, z, spread: [0.08, 0.08, 0.08], speed: [1.5, 4], colors: [0xfff0c0, 0xffc65c], bright: 2, size: [0.008, 0.018], life: [0.4, 1.0], drag: 1.4, grav: 5 });
+  fxLight.color.setHex(0xff7a2a); fxLightI = Math.max(fxLightI, 12);
 }
 
 // Light flashes: a coloured point light on the pin deck, a pulse on the deck spotlight, and neon strips that cycle on a turkey
@@ -963,6 +1050,7 @@ function flashScreen(kind) { flashEl.className = kind; void flashEl.offsetWidth;
 
 function onImpact(x, y, z, v) {
   crash(v, standingBefore);
+  if (fire > 0.3) fireImpact(x, y, z);
   const s = clamp(v / 9, 0.3, 1);
   emit(Math.round(30 + 50 * s), { x, y, z, spread: [0.04, 0.04, 0.04], dir: new THREE.Vector3(0, 0.5, 0.6), cone: 1.1, speed: [0.8, 1.5 + 3 * s],
     colors: [0xfff3d6, 0xffc65c, 0xff9a5c], bright: 1.4, size: [0.008, 0.022], life: [0.25, 0.75], drag: 2.2, grav: 7 });
@@ -1103,6 +1191,9 @@ function rackPins() {
 // push it would bend much more. Scaled like this the bend at the pins depends on the spin setting only, not on how
 // hard the ball was swiped (HOOK_REF_SPEED is the speed at which the push is the original 5.2 N per unit of spin).
 const HOOK_REF_SPEED = 7.5;
+// ball speeds (m/s): 13 km/h for the gentlest roll up to 35 km/h, about what a pro throws.
+// From 33 km/h up the ball goes up in flames (see the fireball section).
+const SPEED_MIN = 3.6, SPEED_MAX = 35 / 3.6, FIRE_KMH = 33;
 function hookForce(ball, spin, speed) {
   const p = ball.position;
   // past the end of the deck the ball is in the pit: the cushion at the back soaks it up instead of
@@ -1519,6 +1610,16 @@ function thunk() {
   boom(ac.currentTime, { from: 85, to: 35, gain: 0.85, d: 0.32 });
 }
 // entering slow motion: a falling swoosh
+// fireball lighting up: a "whoomp" (a rising rush of air and a low thump)
+function igniteSound() {
+  if (!ac) return; const t = ac.currentTime;
+  const s = ac.createBufferSource(); s.buffer = noiseBuf;
+  const f = ac.createBiquadFilter(); f.type = 'bandpass'; f.Q.value = 1.2;
+  f.frequency.setValueAtTime(300, t); f.frequency.exponentialRampToValueAtTime(2400, t + 0.35);
+  const g = ac.createGain(); env(g, t, 0.5, 0.04, 0.55);
+  s.connect(f).connect(g).connect(sfx); s.start(t, Math.random(), 0.7);
+  boom(t, { from: 120, to: 45, gain: 0.45, d: 0.4 });
+}
 function whoosh() {
   if (!ac) return; const t = ac.currentTime;
   const s = ac.createBufferSource(); s.buffer = noiseBuf;
@@ -2096,7 +2197,8 @@ function analyze(pts) {
     vmax = Math.max(vmax, (pts[k].y - pts[j].y) / Math.max((pts[j].t - pts[k].t) / 1000, 0.016));
   }
   const vn = vmax / innerHeight; // screen heights per second
-  const speed = clamp(3.4 + vn * 1.5, 3.6, 10.8);
+  const raw = clamp(3.4 + vn * 1.5, 3.6, 10.8); // (the old 13–39 km/h scale)
+  const speed = SPEED_MIN + (raw - 3.6) * (SPEED_MAX - SPEED_MIN) / (10.8 - 3.6); // squeezed to 13–35 km/h, same feel
   return { dy, speed, ang };
 }
 const shotFrom = (s) => ({ speed: s.speed, ang: s.ang, spin: baseSpin() });
@@ -2122,7 +2224,7 @@ canvas.addEventListener('pointermove', (e) => {
 // power 0-100%: the slowest to the fastest ball a swipe can give (see analyze)
 let powerHold = null;
 function showPower(speed) {
-  const pct = Math.round(clamp((speed - 3.6) / (10.8 - 3.6), 0, 1) * 100), el = $('#power');
+  const pct = Math.round(clamp((speed - SPEED_MIN) / (SPEED_MAX - SPEED_MIN), 0, 1) * 100), el = $('#power');
   el.querySelector('i').style.height = `${pct}%`; el.querySelector('b').textContent = `${pct}%`;
   el.classList.add('show');
 }
@@ -2190,6 +2292,7 @@ function launch() {
   shotHit = false; hitT = null; gutterSnd = false; slowArmed = false; slowCued = false; slowWhoosh = false; trailPts.length = 0;
   predictShot();
   thunk();
+  igniteBall(Math.round(shot.speed * 3.6) >= FIRE_KMH); // the speed shown on screen decides
 }
 
 function pinsQuiet() {
@@ -2555,7 +2658,7 @@ function update(dt) {
     }
     setRolling(ballBody.velocity.length() * (1 - 0.75 * slowAmt), mode);
   }
-  updateFx(sdt); updateConfetti(sdt); updateLights(sdt); updateTrail(dt);
+  updateFire(dt); updateFx(sdt); updateConfetti(sdt); updateLights(sdt); updateTrail(dt);
   fxMat.uniforms.uScale.value = renderer.domElement.height / (2 * Math.tan(THREE.MathUtils.degToRad(camera.fov) / 2));
 }
 // If the player never picked a quality and the game keeps running slow, step down one level (at most to low).
